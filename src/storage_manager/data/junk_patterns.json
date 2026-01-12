@@ -1,0 +1,102 @@
+{
+  "temporary": {
+    "extensions": [".tmp", ".temp", ".bak", ".old", ".~", ".swp", ".swo"],
+    "filenames": ["~$*", "*.tmp", "Thumbs.db", ".DS_Store", "desktop.ini"],
+    "directories": ["temp", "tmp", "temporary"],
+    "age_threshold_days": 7,
+    "description": "Temporary files and backups"
+  },
+  "cache": {
+    "extensions": [".cache"],
+    "directories": [
+      "__pycache__",
+      ".pytest_cache",
+      ".cache",
+      "node_modules/.cache",
+      ".npm",
+      ".yarn-cache",
+      "Cache",
+      "CacheStorage"
+    ],
+    "age_threshold_days": 30,
+    "description": "Application and system caches"
+  },
+  "logs": {
+    "extensions": [".log", ".log.*"],
+    "directories": ["logs", "log"],
+    "age_threshold_days": 90,
+    "min_size_mb": 1,
+    "description": "Log files (>1MB, >90 days)"
+  },
+  "build_artifacts": {
+    "directories": [
+      "node_modules",
+      ".gradle",
+      "build",
+      "dist",
+      "target",
+      ".next",
+      ".nuxt",
+      "out",
+      "__pycache__"
+    ],
+    "extensions": [".pyc", ".pyo", ".pyd", ".class", ".o", ".obj"],
+    "description": "Build and compilation artifacts"
+  },
+  "browser_data": {
+    "directories": [
+      "Cookies",
+      "Sessions",
+      "Service Worker/CacheStorage",
+      "GPUCache"
+    ],
+    "description": "Browser cache and temporary data"
+  },
+  "development_artifacts": {
+    "directories": [
+      ".git/objects/pack",
+      ".svn",
+      "coverage",
+      ".nyc_output"
+    ],
+    "extensions": [".coverage", ".hypothesis"],
+    "description": "Development tool artifacts"
+  },
+  "windows_junk": {
+    "filenames": [
+      "Thumbs.db",
+      "desktop.ini",
+      "~$*",
+      "*.lnk.DISABLED"
+    ],
+    "directories": [
+      "$RECYCLE.BIN",
+      "System Volume Information"
+    ],
+    "description": "Windows-specific junk files"
+  },
+  "macos_junk": {
+    "filenames": [
+      ".DS_Store",
+      ".AppleDouble",
+      ".LSOverride",
+      "._*"
+    ],
+    "directories": [
+      ".Spotlight-V100",
+      ".Trashes",
+      ".fseventsd"
+    ],
+    "description": "macOS-specific junk files"
+  },
+  "office_temp": {
+    "filenames": ["~$*"],
+    "extensions": [".~lock.*#"],
+    "description": "Office application temporary files"
+  },
+  "editor_temp": {
+    "extensions": [".swp", ".swo", ".swn", "*~"],
+    "filenames": [".*.sw?"],
+    "description": "Text editor temporary files"
+  }
+}

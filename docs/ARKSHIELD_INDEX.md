@@ -59,5 +59,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 31** (`/security/integrity`, `/security/integrity/watch`, `/security/integrity/alerts`) with integrity watchlist and tamper alerts.
 - Implemented **Phase 32** (`/devices/usb`, `/devices/history`, `/devices/block/{device_id}`) with removable device tracking and policy-layer blocking.
 - Implemented **Phase 33** (`/security/privilege-events`, `/security/admin-actions`) with escalation indicator detection and admin action monitoring.
-- Implemented baseline endpoints for remaining **Phases 34-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 34** (`/ransomware/alerts`, `/ransomware/simulate`) with ransomware pattern detection and safe simulation workflows.
+- Implemented **Phase 35** (`/security/credential-theft`, `/security/auth-anomalies`) with credential theft and auth anomaly detection.
+- Implemented baseline endpoints for remaining **Phases 36-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

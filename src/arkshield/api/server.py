@@ -41,6 +41,7 @@ _integrity_watchlist: Dict[str, Dict[str, Any]] = {}
 _integrity_alerts: List[Dict[str, Any]] = []
 _blocked_devices: Dict[str, Dict[str, Any]] = {}
 _device_history: List[Dict[str, Any]] = []
+_ransomware_simulations: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -170,6 +171,12 @@ class IntegrityWatchRequest(BaseModel):
     file_path: str
     criticality: str = "medium"
     notes: str = ""
+
+
+class RansomwareSimulateRequest(BaseModel):
+    target_label: str = "lab-sample"
+    simulated_files: int = 50
+    encryption_rate_per_minute: int = 120
 
 
 def _matches_attack_pattern(event: SecurityEvent, pattern: str) -> bool:
@@ -3791,6 +3798,251 @@ async def security_admin_actions(limit: int = 300):
     return {
         "count": len(actions[:max_items]),
         "actions": actions[:max_items],
+    }
+
+
+# --- Phase 34: Ransomware Detection Engine (Deep Implementation) ---
+
+@app.get("/ransomware/alerts")
+async def ransomware_alerts(
+    window_hours: int = 72,
+    limit: int = 2500,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Detect ransomware behavior patterns from telemetry and return prioritized alerts."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=_safe_limit(window_hours, default=72, minimum=1, maximum=720))
+    events = sentinel.repository.get_recent_events(limit=_safe_limit(limit, default=2500, minimum=100, maximum=10000))
+
+    indicators = [
+        "ransom",
+        "encrypt",
+        "vssadmin",
+        "shadowcopy",
+        "recovery key",
+        "file_entropy_high",
+        "threat_ransomware",
+    ]
+    matches: List[Dict[str, Any]] = []
+
+    for evt in events:
+        ts = _parse_iso_datetime(evt.timestamp)
+        if ts and ts < cutoff:
+            continue
+
+        blob = " ".join([
+            evt.event_type or "",
+            evt.description or "",
+            evt.threat_category or "",
+            str(evt.metadata or ""),
+            " ".join(evt.tags or []),
+        ]).lower()
+
+        hits = [indicator for indicator in indicators if indicator in blob]
+        is_candidate = bool(hits) or (evt.event_type in {"file_entropy_high", "threat_ransomware"})
+        if not is_candidate:
+            continue
+
+        confidence = min(0.99, round(0.35 + 0.10 * len(hits) + (0.15 if evt.is_threat else 0.0), 2))
+        priority = "critical" if confidence >= 0.85 else "high" if confidence >= 0.65 else "medium"
+        matches.append({
+            "event_id": evt.event_id,
+            "timestamp": evt.timestamp,
+            "event_type": evt.event_type,
+            "description": evt.description,
+            "risk_score": evt.risk_score,
+            "is_threat": evt.is_threat,
+            "indicators": hits,
+            "confidence": confidence,
+            "priority": priority,
+        })
+
+    matches.sort(key=lambda x: (x["confidence"], float(x.get("risk_score") or 0.0)), reverse=True)
+    summary = Counter(item["priority"] for item in matches)
+
+    return {
+        "window_hours": window_hours,
+        "count": len(matches),
+        "summary": {
+            "critical": summary.get("critical", 0),
+            "high": summary.get("high", 0),
+            "medium": summary.get("medium", 0),
+        },
+        "alerts": matches[:500],
+    }
+
+
+@app.post("/ransomware/simulate")
+async def ransomware_simulate(request: RansomwareSimulateRequest):
+    """Run a safe ransomware behavior simulation for detection validation."""
+    files = _safe_limit(request.simulated_files, default=50, minimum=1, maximum=50000)
+    rate = _safe_limit(request.encryption_rate_per_minute, default=120, minimum=1, maximum=100000)
+    note_appearance = min(100, max(1, files // 20))
+
+    score = min(100, int((files / 40) + (rate / 80)))
+    severity = "critical" if score >= 80 else "high" if score >= 55 else "medium"
+
+    result = {
+        "id": f"ransomware-sim-{int(time.time() * 1000)}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "target_label": request.target_label,
+        "simulated_metrics": {
+            "files_touched": files,
+            "encryption_rate_per_minute": rate,
+            "ransom_note_events": note_appearance,
+        },
+        "detection_prediction": {
+            "risk_score": score,
+            "severity": severity,
+            "expected_indicators": [
+                "rapid file modifications",
+                "high entropy output",
+                "shadow copy deletion attempts",
+                "ransom note artifacts",
+            ],
+        },
+        "safety": {
+            "mode": "simulation-only",
+            "executed_payload": False,
+            "note": "No real encryption or destructive operations performed.",
+        },
+    }
+    _ransomware_simulations.append(result)
+    if len(_ransomware_simulations) > 500:
+        del _ransomware_simulations[:-500]
+
+    return result
+
+
+# --- Phase 35: Credential Theft Detection (Deep Implementation) ---
+
+@app.get("/security/credential-theft")
+async def security_credential_theft(
+    window_hours: int = 72,
+    limit: int = 2500,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Detect probable credential theft activity from telemetry and command patterns."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=_safe_limit(window_hours, default=72, minimum=1, maximum=720))
+    events = sentinel.repository.get_recent_events(limit=_safe_limit(limit, default=2500, minimum=100, maximum=10000))
+
+    indicators = [
+        "mimikatz",
+        "lsass",
+        "sekurlsa",
+        "credential",
+        "sam",
+        "token",
+        "dump",
+        "pass-the-hash",
+    ]
+    detections: List[Dict[str, Any]] = []
+
+    for evt in events:
+        ts = _parse_iso_datetime(evt.timestamp)
+        if ts and ts < cutoff:
+            continue
+
+        blob = " ".join([
+            evt.event_type or "",
+            evt.description or "",
+            evt.threat_category or "",
+            str(evt.metadata or ""),
+            " ".join(evt.tags or []),
+        ]).lower()
+
+        hits = [indicator for indicator in indicators if indicator in blob]
+        if not hits:
+            continue
+
+        confidence = min(0.99, round(0.40 + 0.09 * len(hits) + (0.10 if evt.is_threat else 0.0), 2))
+        detections.append({
+            "event_id": evt.event_id,
+            "timestamp": evt.timestamp,
+            "event_type": evt.event_type,
+            "description": evt.description,
+            "risk_score": evt.risk_score,
+            "is_threat": evt.is_threat,
+            "indicator_hits": hits,
+            "confidence": confidence,
+        })
+
+    detections.sort(key=lambda x: (x["confidence"], float(x.get("risk_score") or 0.0)), reverse=True)
+    return {
+        "window_hours": window_hours,
+        "count": len(detections),
+        "detections": detections[:500],
+    }
+
+
+@app.get("/security/auth-anomalies")
+async def security_auth_anomalies(
+    limit: int = 1500,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Detect anomalous authentication behavior patterns from event metadata and auth telemetry."""
+    events = sentinel.repository.get_recent_events(limit=_safe_limit(limit, default=1500, minimum=100, maximum=10000))
+    anomalies: List[Dict[str, Any]] = []
+
+    user_failed: Dict[str, int] = {}
+    user_success: Dict[str, int] = {}
+    source_ip_activity: Dict[str, int] = {}
+
+    for evt in events:
+        event_blob = " ".join([
+            evt.event_class or "",
+            evt.event_type or "",
+            evt.description or "",
+            str(evt.metadata or ""),
+        ]).lower()
+
+        if "auth" not in event_blob and "login" not in event_blob:
+            continue
+
+        metadata = evt.metadata if isinstance(evt.metadata, dict) else {}
+        user = str(metadata.get("user") or metadata.get("username") or "unknown")
+        source_ip = str(metadata.get("source_ip") or metadata.get("ip") or "unknown")
+        outcome = str(metadata.get("outcome") or metadata.get("result") or "unknown").lower()
+
+        if source_ip != "unknown":
+            source_ip_activity[source_ip] = source_ip_activity.get(source_ip, 0) + 1
+
+        if outcome in {"fail", "failed", "denied", "invalid"}:
+            user_failed[user] = user_failed.get(user, 0) + 1
+        elif outcome in {"ok", "success", "succeeded", "allow", "allowed"}:
+            user_success[user] = user_success.get(user, 0) + 1
+
+    for user, fail_count in user_failed.items():
+        success_count = user_success.get(user, 0)
+        if fail_count >= 5 and success_count == 0:
+            anomalies.append({
+                "type": "repeated_failed_logins",
+                "user": user,
+                "failed_count": fail_count,
+                "success_count": success_count,
+                "risk": "high" if fail_count >= 10 else "medium",
+            })
+        elif fail_count >= 8 and success_count > 0:
+            anomalies.append({
+                "type": "possible_password_spraying",
+                "user": user,
+                "failed_count": fail_count,
+                "success_count": success_count,
+                "risk": "high",
+            })
+
+    for source_ip, count in source_ip_activity.items():
+        if count >= 25:
+            anomalies.append({
+                "type": "auth_volume_spike_by_source",
+                "source_ip": source_ip,
+                "event_count": count,
+                "risk": "high" if count >= 50 else "medium",
+            })
+
+    anomalies.sort(key=lambda item: (item.get("risk") == "high", item.get("failed_count", 0), item.get("event_count", 0)), reverse=True)
+    return {
+        "count": len(anomalies),
+        "anomalies": anomalies[:500],
     }
 
 

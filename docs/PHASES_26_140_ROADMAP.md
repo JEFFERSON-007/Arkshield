@@ -94,17 +94,29 @@ Capabilities:
 - Detect privilege escalation
 - Monitor admin activity
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
-
 ### Phase 34 - Ransomware Detection Engine
+
+Endpoints:
 - `GET /ransomware/alerts`
 - `POST /ransomware/simulate`
 
+Capabilities:
+- Detect mass file encryption
+- Ransomware behavior patterns
+
 ### Phase 35 - Credential Theft Detection
+
+Endpoints:
 - `GET /security/credential-theft`
 - `GET /security/auth-anomalies`
+
+Capabilities:
+- Detect credential dumping
+- Login anomaly detection
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
 
 ### Phase 36 - DNS Security Monitoring
 - `GET /dns/logs`

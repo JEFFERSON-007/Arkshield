@@ -75,7 +75,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /security/integrity` + watch/alerts endpoints (Phase 31): File integrity monitoring with baseline hash tamper detection.
 - `GET /devices/usb` + device history/block endpoints (Phase 32): Removable device tracking with policy-layer block controls.
 - `GET /security/privilege-events` + `GET /security/admin-actions` (Phase 33): Privilege escalation indicators and admin action monitoring.
-- Phases 34-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /ransomware/alerts` + `POST /ransomware/simulate` (Phase 34): Ransomware behavior detection and safe simulation workflows.
+- `GET /security/credential-theft` + `GET /security/auth-anomalies` (Phase 35): Credential theft signal detection and authentication anomaly analytics.
+- Phases 36-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

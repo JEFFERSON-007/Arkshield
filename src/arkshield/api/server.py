@@ -1020,7 +1020,10 @@ async def lookup_hash(hash_value: str):
         "44d88612fea8a8f36de82e1278abb02f": {"name": "EICAR Test File", "threat": "Test/EICAR", "confidence": 1.0},
         "275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f": {"name": "EICAR SHA256", "threat": "Test/EICAR", "confidence": 1.0}
     }
-    result = {"hash": hash_value, "hash_type": {32: "MD5", 40: "SHA1", 64: "SHA256"}.get(len(hash_value), "Unknown")}
+    result: Dict[str, Any] = {
+        "hash": hash_value,
+        "hash_type": {32: "MD5", 40: "SHA1", 64: "SHA256"}.get(len(hash_value), "Unknown")
+    }
     if hash_value.lower() in known_bad:
         result["verdict"] = "MALICIOUS"
         result["details"] = known_bad[hash_value.lower()]
@@ -1324,12 +1327,12 @@ async def get_local_users():
 async def get_firewall_rules():
     """Parse Windows firewall rules."""
     import subprocess
-    rules = []
+    rules: List[Dict[str, Any]] = []
     try:
         # For performance, we parse a limited subset or use explicit matching
         res = subprocess.run(['netsh', 'advfirewall', 'firewall', 'show', 'rule', 'name=all'], capture_output=True, text=True, timeout=10)
         
-        current_rule = {}
+        current_rule: Dict[str, Any] = {}
         for line in res.stdout.split('\n'):
             line = line.strip()
             if not line or line.startswith('-'): continue
@@ -2524,13 +2527,25 @@ async def network_security_audit():
         connections = psutil.net_connections(kind='inet')
         
         # Categorize connections
-        listening_ports = {}
-        established_conns = []
+        listening_ports: Dict[int, List[Dict[str, Any]]] = {}
+        established_conns: List[Dict[str, Any]] = []
+
+        def _addr_ip_port(addr: Any) -> tuple[str, int]:
+            """Normalize psutil sockaddr/tuple into (ip, port)."""
+            if not addr:
+                return ("0.0.0.0", 0)
+            if hasattr(addr, "ip") and hasattr(addr, "port"):
+                return (str(getattr(addr, "ip")), int(getattr(addr, "port")))
+            if isinstance(addr, tuple):
+                ip = str(addr[0]) if len(addr) > 0 else "0.0.0.0"
+                port = int(addr[1]) if len(addr) > 1 else 0
+                return (ip, port)
+            return ("0.0.0.0", 0)
         
         for conn in connections:
             try:
                 if conn.status == 'LISTEN':
-                    port = conn.laddr.port
+                    listen_ip, port = _addr_ip_port(conn.laddr)
                     if port not in listening_ports:
                         listening_ports[port] = []
                     
@@ -2544,7 +2559,7 @@ async def network_security_audit():
                     listening_ports[port].append({
                         "pid": conn.pid,
                         "process": proc_name,
-                        "address": conn.laddr.ip
+                        "address": listen_ip
                     })
                 
                 elif conn.status == 'ESTABLISHED':
@@ -2554,9 +2569,11 @@ async def network_security_audit():
                     except:
                         proc_name = "Unknown"
                     
+                    local_ip, local_port = _addr_ip_port(conn.laddr)
+                    remote_ip, remote_port = _addr_ip_port(conn.raddr)
                     established_conns.append({
-                        "local_addr": f"{conn.laddr.ip}:{conn.laddr.port}",
-                        "remote_addr": f"{conn.raddr.ip}:{conn.raddr.port}" if conn.raddr else "N/A",
+                        "local_addr": f"{local_ip}:{local_port}",
+                        "remote_addr": f"{remote_ip}:{remote_port}" if conn.raddr else "N/A",
                         "pid": conn.pid,
                         "process": proc_name
                     })
@@ -3373,7 +3390,7 @@ async def ai_malware_classify(request: MalwareClassifyRequest):
         observed_behaviors.update(s.lower() for s in sandbox_report.get("behavior", {}).get("observed_behaviors", []))
 
     # Heuristic family mapping aligned with observable behavior traits.
-    family_scores = {
+    family_scores: Dict[str, int] = {
         "ransomware": 0,
         "trojan": 0,
         "worm": 0,
@@ -3399,7 +3416,7 @@ async def ai_malware_classify(request: MalwareClassifyRequest):
         family_scores["ransomware"] += 10
         family_scores["trojan"] += 8
 
-    predicted_family = max(family_scores, key=family_scores.get)
+    predicted_family = max(family_scores.items(), key=lambda item: item[1])[0]
     raw_score = family_scores[predicted_family]
     confidence = round(max(0.0, min(0.99, raw_score / 100.0 + 0.15)), 2)
 
@@ -5789,7 +5806,7 @@ async def autonomous_enable(payload: Dict[str, Any] = Body(default_factory=dict)
     _autonomous_defense_state["policy_binding"] = _policy_state.get("mode", "monitor")
     _autonomous_defense_state["last_updated"] = datetime.now(timezone.utc).isoformat()
 
-    action = {
+    action: Dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "type": "autonomous-toggle",
         "status": "enabled" if enabled else "disabled",

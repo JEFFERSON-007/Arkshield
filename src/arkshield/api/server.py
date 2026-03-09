@@ -72,6 +72,20 @@ _autonomous_defense_state: Dict[str, Any] = {
     "last_action": None,
 }
 _autonomous_action_log: List[Dict[str, Any]] = []
+_security_graph_snapshots: List[Dict[str, Any]] = []
+_behavior_baseline_model: Dict[str, Any] = {
+    "trained": False,
+    "version": 0,
+    "trained_at": None,
+    "features": {
+        "avg_dns_risk": 0,
+        "avg_network_anomaly": 0,
+        "avg_process_suspicious": 0,
+        "avg_insider_risk": 0,
+    },
+    "sample_count": 0,
+}
+_behavior_observation_history: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -5688,6 +5702,242 @@ async def autonomous_enable(payload: Dict[str, Any] = Body(default_factory=dict)
         "status": "updated",
         "autonomous_defense": _autonomous_defense_state,
         "action": action,
+    }
+
+
+# --- Phase 50: Global Security Graph (Deep Implementation) ---
+
+@app.get("/security/graph")
+async def security_graph():
+    """Build a lightweight global security graph connecting assets, identities, and threat signals."""
+    assets = await risk_critical_assets()
+    insider = await insider_risk_scores()
+    dns = await dns_suspicious()
+    threat = await threat_posture()
+
+    critical_assets = assets.get("critical_assets", [])[:8]
+    high_identities = insider.get("identities", [])[:8]
+    suspicious_domains = dns.get("suspicious_domains", [])[:8]
+    top_threats = threat.get("top_active_alerts", [])[:8]
+
+    nodes: List[Dict[str, Any]] = []
+    edges: List[Dict[str, Any]] = []
+
+    for item in critical_assets:
+        nodes.append({
+            "id": f"asset:{item.get('asset_id')}",
+            "type": "asset",
+            "label": item.get("asset_id"),
+            "risk": item.get("composite_risk", 0),
+        })
+
+    for ident in high_identities:
+        user = ident.get("user", "unknown")
+        nodes.append({
+            "id": f"identity:{user}",
+            "type": "identity",
+            "label": user,
+            "risk": ident.get("risk_score", 0),
+        })
+
+    for dom in suspicious_domains:
+        domain = dom.get("domain", "unknown")
+        nodes.append({
+            "id": f"domain:{domain}",
+            "type": "domain",
+            "label": domain,
+            "risk": dom.get("risk_score", 0),
+        })
+
+    for alert in top_threats:
+        aid = str(alert.get("id") or uuid.uuid4().hex[:8])
+        nodes.append({
+            "id": f"threat:{aid}",
+            "type": "threat",
+            "label": alert.get("name", "threat-event"),
+            "risk": alert.get("score", 0),
+        })
+
+    for idx, item in enumerate(critical_assets):
+        if high_identities:
+            user = high_identities[idx % len(high_identities)].get("user", "unknown")
+            edges.append({
+                "source": f"identity:{user}",
+                "target": f"asset:{item.get('asset_id')}",
+                "relation": "accesses",
+                "weight": 1 + (idx % 3),
+            })
+        if suspicious_domains:
+            domain = suspicious_domains[idx % len(suspicious_domains)].get("domain", "unknown")
+            edges.append({
+                "source": f"domain:{domain}",
+                "target": f"asset:{item.get('asset_id')}",
+                "relation": "communicates_with",
+                "weight": 2,
+            })
+
+    for idx, alert in enumerate(top_threats):
+        aid = str(alert.get("id") or f"t{idx}")
+        if critical_assets:
+            target = critical_assets[idx % len(critical_assets)].get("asset_id")
+            edges.append({
+                "source": f"threat:{aid}",
+                "target": f"asset:{target}",
+                "relation": "impacts",
+                "weight": 3,
+            })
+
+    snapshot = {
+        "graph_id": f"graph-{uuid.uuid4().hex[:10]}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "node_count": len(nodes),
+        "edge_count": len(edges),
+        "nodes": nodes,
+        "edges": edges,
+    }
+
+    _security_graph_snapshots.append(snapshot)
+    if len(_security_graph_snapshots) > 300:
+        del _security_graph_snapshots[:-300]
+
+    return snapshot
+
+
+@app.get("/security/graph/threats")
+async def security_graph_threats():
+    """Return threat-centric view from the global security graph."""
+    graph = await security_graph()
+
+    threat_nodes = [n for n in graph.get("nodes", []) if n.get("type") == "threat"]
+    threat_ids = {n["id"] for n in threat_nodes}
+    threat_edges = [e for e in graph.get("edges", []) if e.get("source") in threat_ids]
+
+    exposure_by_asset: Dict[str, int] = {}
+    for edge in threat_edges:
+        target = edge.get("target", "")
+        exposure_by_asset[target] = exposure_by_asset.get(target, 0) + int(edge.get("weight", 1))
+
+    top_targets = sorted(
+        [{"asset": k, "threat_exposure": v} for k, v in exposure_by_asset.items()],
+        key=lambda x: x["threat_exposure"],
+        reverse=True,
+    )[:10]
+
+    return {
+        "graph_id": graph.get("graph_id"),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "threat_node_count": len(threat_nodes),
+        "threat_edges": threat_edges,
+        "top_target_assets": top_targets,
+    }
+
+
+# --- Phase 51: Behavioral Baseline Engine (Deep Implementation) ---
+
+@app.get("/behavior/baseline")
+async def behavior_baseline():
+    """Return current behavioral baseline model and latest observations."""
+    latest = _behavior_observation_history[-20:]
+    return {
+        "model": _behavior_baseline_model,
+        "recent_observations": latest,
+    }
+
+
+@app.post("/behavior/baseline/train")
+async def behavior_baseline_train(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Train baseline model from live telemetry snapshots and optional synthetic samples."""
+    sample_size = int(max(3, min(30, int(payload.get("sample_size", 8)))))
+
+    observations: List[Dict[str, Any]] = []
+    for _ in range(sample_size):
+        dns = await dns_suspicious()
+        net = await network_anomalies()
+        proc = await process_monitor()
+        insider = await insider_risk_scores()
+        obs = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "dns_risk": int(dns.get("risk_score", 0)),
+            "network_anomaly": int(net.get("risk_score", 0)),
+            "process_suspicious": len(proc.get("suspicious_processes", [])) if isinstance(proc, dict) else 0,
+            "insider_risk": int(insider.get("portfolio_risk_score", 0)),
+        }
+        observations.append(obs)
+
+    if not observations:
+        raise HTTPException(status_code=500, detail="could not collect observations for baseline training")
+
+    denom = max(1, len(observations))
+    features = {
+        "avg_dns_risk": int(sum(o["dns_risk"] for o in observations) / denom),
+        "avg_network_anomaly": int(sum(o["network_anomaly"] for o in observations) / denom),
+        "avg_process_suspicious": float(sum(o["process_suspicious"] for o in observations) / denom),
+        "avg_insider_risk": int(sum(o["insider_risk"] for o in observations) / denom),
+    }
+
+    _behavior_baseline_model["trained"] = True
+    _behavior_baseline_model["version"] = int(_behavior_baseline_model.get("version", 0)) + 1
+    _behavior_baseline_model["trained_at"] = datetime.now(timezone.utc).isoformat()
+    _behavior_baseline_model["features"] = features
+    _behavior_baseline_model["sample_count"] = sample_size
+
+    _behavior_observation_history.extend(observations)
+    if len(_behavior_observation_history) > 2000:
+        del _behavior_observation_history[:-2000]
+
+    return {
+        "status": "trained",
+        "model": _behavior_baseline_model,
+        "samples_collected": sample_size,
+    }
+
+
+@app.get("/behavior/anomalies")
+async def behavior_anomalies():
+    """Detect behavior anomalies against the trained baseline model."""
+    if not _behavior_baseline_model.get("trained", False):
+        await behavior_baseline_train({"sample_size": 6})
+
+    dns = await dns_suspicious()
+    net = await network_anomalies()
+    proc = await process_monitor()
+    insider = await insider_risk_scores()
+
+    current = {
+        "dns_risk": int(dns.get("risk_score", 0)),
+        "network_anomaly": int(net.get("risk_score", 0)),
+        "process_suspicious": len(proc.get("suspicious_processes", [])) if isinstance(proc, dict) else 0,
+        "insider_risk": int(insider.get("portfolio_risk_score", 0)),
+    }
+    baseline = _behavior_baseline_model.get("features", {})
+
+    deltas = {
+        "dns_risk_delta": current["dns_risk"] - int(baseline.get("avg_dns_risk", 0)),
+        "network_anomaly_delta": current["network_anomaly"] - int(baseline.get("avg_network_anomaly", 0)),
+        "process_suspicious_delta": current["process_suspicious"] - float(baseline.get("avg_process_suspicious", 0.0)),
+        "insider_risk_delta": current["insider_risk"] - int(baseline.get("avg_insider_risk", 0)),
+    }
+
+    anomalies: List[Dict[str, Any]] = []
+    if deltas["dns_risk_delta"] >= 20:
+        anomalies.append({"type": "dns-risk-spike", "severity": "high", "delta": deltas["dns_risk_delta"]})
+    if deltas["network_anomaly_delta"] >= 20:
+        anomalies.append({"type": "network-anomaly-spike", "severity": "high", "delta": deltas["network_anomaly_delta"]})
+    if deltas["process_suspicious_delta"] >= 3:
+        anomalies.append({"type": "suspicious-process-surge", "severity": "medium", "delta": deltas["process_suspicious_delta"]})
+    if deltas["insider_risk_delta"] >= 15:
+        anomalies.append({"type": "insider-risk-drift", "severity": "high", "delta": deltas["insider_risk_delta"]})
+
+    risk_score = min(100, sum(25 if a["severity"] == "high" else 12 for a in anomalies))
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "baseline_version": _behavior_baseline_model.get("version", 0),
+        "current": current,
+        "baseline": baseline,
+        "deltas": deltas,
+        "anomaly_count": len(anomalies),
+        "risk_score": risk_score,
+        "anomalies": anomalies,
     }
 
 

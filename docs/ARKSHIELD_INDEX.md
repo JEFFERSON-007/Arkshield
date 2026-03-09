@@ -75,5 +75,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 47** (`/playbooks`, `/playbooks/run`) with automated playbook catalog and simulated response execution.
 - Implemented **Phase 48** (`/system/digital-twin`, `/system/simulate-attack`) with live digital twin snapshots and attack impact simulation.
 - Implemented **Phase 49** (`/autonomous/status`, `/autonomous/enable`) with autonomous defense control, readiness evaluation, and response trigger logging.
-- Implemented baseline endpoints for remaining **Phases 50-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 50** (`/security/graph`, `/security/graph/threats`) with graph-based mapping of assets, identities, domains, and threat relationships.
+- Implemented **Phase 51** (`/behavior/baseline`, `/behavior/baseline/train`, `/behavior/anomalies`) with behavioral baseline training and anomaly drift detection.
+- Implemented baseline endpoints for remaining **Phases 52-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

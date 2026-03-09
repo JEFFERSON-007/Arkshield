@@ -91,7 +91,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /playbooks` + `POST /playbooks/run` (Phase 47): Automated response playbook catalog and simulated execution timelines.
 - `GET /system/digital-twin` + `POST /system/simulate-attack` (Phase 48): Digital twin state snapshots with scenario-driven attack impact simulation.
 - `GET /autonomous/status` + `POST /autonomous/enable` (Phase 49): Autonomous defense readiness, control mode, and risk-triggered response execution.
-- Phases 50-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /security/graph` + `GET /security/graph/threats` (Phase 50): Global security graph of identities, assets, threat nodes, and exposure paths.
+- `GET /behavior/baseline` + `POST /behavior/baseline/train` + `GET /behavior/anomalies` (Phase 51): Baseline training from telemetry and anomaly drift detection.
+- Phases 52-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

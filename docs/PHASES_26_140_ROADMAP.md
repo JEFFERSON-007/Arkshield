@@ -256,18 +256,30 @@ Capabilities:
 - Autonomous defense mode management and readiness checks
 - Risk-threshold playbook triggering with action logging
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 50 - Global Security Graph
+
+Endpoints:
 - `GET /security/graph`
 - `GET /security/graph/threats`
 
+Capabilities:
+- Asset, identity, domain, and threat relationship graph construction
+- Threat-centric exposure view for high-priority target assets
+
 ### Phase 51 - Behavioral Baseline Engine
+
+Endpoints:
 - `GET /behavior/baseline`
 - `POST /behavior/baseline/train`
 - `GET /behavior/anomalies`
+
+Capabilities:
+- Live telemetry-derived baseline model training
+- Baseline drift and anomaly detection scoring
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 52 - Suspicious Command Detection
 - `GET /commands/history`

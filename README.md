@@ -93,7 +93,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /autonomous/status` + `POST /autonomous/enable` (Phase 49): Autonomous defense readiness, control mode, and risk-triggered response execution.
 - `GET /security/graph` + `GET /security/graph/threats` (Phase 50): Global security graph of identities, assets, threat nodes, and exposure paths.
 - `GET /behavior/baseline` + `POST /behavior/baseline/train` + `GET /behavior/anomalies` (Phase 51): Baseline training from telemetry and anomaly drift detection.
-- Phases 52-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /commands/history` + `GET /commands/suspicious` + `POST /commands/block/{command}` (Phase 52): Suspicious command telemetry, rule-based detection, and command block policy actions.
+- `GET /network/lateral-movement` + `GET /network/lateral-alerts` (Phase 53): Lateral movement risk correlation and alert tracking.
+- Phases 54-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

@@ -7,6 +7,7 @@ Provides endpoints for alerts, telemetry, AI analyst, system metrics, and threat
 
 import os
 import time
+import uuid
 import logging
 import platform
 import shutil
@@ -15,7 +16,7 @@ import re
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -86,6 +87,9 @@ _behavior_baseline_model: Dict[str, Any] = {
     "sample_count": 0,
 }
 _behavior_observation_history: List[Dict[str, Any]] = []
+_command_observation_history: List[Dict[str, Any]] = []
+_blocked_commands: Dict[str, Dict[str, Any]] = {}
+_lateral_movement_alerts: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -4933,7 +4937,7 @@ async def kubernetes_security():
         "pods",
         "-A",
         "-o",
-        "jsonpath={range .items[*]}{.metadata.namespace}/{.metadata.name}:{range .spec.containers[*]}{.securityContext.privileged}{","}{end}{"\n"}{end}",
+        "jsonpath={range .items[*]}{.metadata.namespace}/{.metadata.name}:{range .spec.containers[*]}{.securityContext.privileged}{','}{end}{'\\n'}{end}",
     ]
     priv_res = _run_cmd(priv_cmd, timeout=12)
     if priv_res.get("ok"):
@@ -5115,10 +5119,10 @@ async def cloud_misconfigurations():
 @app.get("/compliance/status")
 async def compliance_status():
     """Calculate high-level compliance posture mapped to common frameworks."""
-    integrity = await integrity_status()
+    integrity = await security_integrity_status()
     patch = await patch_status()
     posture = await cloud_posture()
-    container_sec = await container_security()
+    container_sec = await containers_security()
 
     integrity_score = 100 - int(max(0, min(100, integrity.get("integrity_risk_score", 0))))
     patch_score = int(max(0, min(100, patch.get("compliance_score", 0))))
@@ -5264,12 +5268,12 @@ async def risk_score():
 async def risk_critical_assets():
     """Identify high-value assets most exposed to active risk signals."""
     now = datetime.now(timezone.utc)
-    proc = await process_monitor()
+    proc = await get_processes()
     net = await network_anomalies()
     patch = await patch_vulnerabilities()
     insider = await insider_risk_scores()
 
-    suspicious_processes = proc.get("suspicious_processes", []) if isinstance(proc, dict) else []
+    suspicious_processes = [p for p in proc if isinstance(p, dict) and int(p.get("risk_score", 0)) >= 60] if isinstance(proc, list) else []
     anomaly_count = int(net.get("anomaly_count", 0)) if isinstance(net, dict) else 0
     cve_count = int(patch.get("totals", {}).get("total_vulnerabilities", 0)) if isinstance(patch, dict) else 0
     insider_high = int(insider.get("high_risk_identities", 0)) if isinstance(insider, dict) else 0
@@ -5284,7 +5288,7 @@ async def risk_critical_assets():
     ranked = []
     for asset in assets:
         risk = asset["base_risk"]
-        risk += min(12, suspicious_processes.__len__() * 2)
+        risk += min(12, len(suspicious_processes) * 2)
         risk += min(10, anomaly_count * 2)
         risk += min(12, cve_count // 2)
         risk += min(8, insider_high * 2)
@@ -5853,13 +5857,13 @@ async def behavior_baseline_train(payload: Dict[str, Any] = Body(default_factory
     for _ in range(sample_size):
         dns = await dns_suspicious()
         net = await network_anomalies()
-        proc = await process_monitor()
+        proc = await get_processes()
         insider = await insider_risk_scores()
         obs = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "dns_risk": int(dns.get("risk_score", 0)),
             "network_anomaly": int(net.get("risk_score", 0)),
-            "process_suspicious": len(proc.get("suspicious_processes", [])) if isinstance(proc, dict) else 0,
+            "process_suspicious": len([p for p in proc if isinstance(p, dict) and int(p.get("risk_score", 0)) >= 60]) if isinstance(proc, list) else 0,
             "insider_risk": int(insider.get("portfolio_risk_score", 0)),
         }
         observations.append(obs)
@@ -5900,13 +5904,13 @@ async def behavior_anomalies():
 
     dns = await dns_suspicious()
     net = await network_anomalies()
-    proc = await process_monitor()
+    proc = await get_processes()
     insider = await insider_risk_scores()
 
     current = {
         "dns_risk": int(dns.get("risk_score", 0)),
         "network_anomaly": int(net.get("risk_score", 0)),
-        "process_suspicious": len(proc.get("suspicious_processes", [])) if isinstance(proc, dict) else 0,
+        "process_suspicious": len([p for p in proc if isinstance(p, dict) and int(p.get("risk_score", 0)) >= 60]) if isinstance(proc, list) else 0,
         "insider_risk": int(insider.get("portfolio_risk_score", 0)),
     }
     baseline = _behavior_baseline_model.get("features", {})
@@ -5938,6 +5942,213 @@ async def behavior_anomalies():
         "anomaly_count": len(anomalies),
         "risk_score": risk_score,
         "anomalies": anomalies,
+    }
+
+
+# --- Phase 52: Suspicious Command Detection (Deep Implementation) ---
+
+@app.get("/commands/history")
+async def commands_history(limit: int = 100):
+    """Return observed command executions from process telemetry and retained history."""
+    import psutil
+
+    limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
+    now = datetime.now(timezone.utc)
+
+    observed: List[Dict[str, Any]] = []
+    for proc in psutil.process_iter(["pid", "name", "username", "create_time", "cmdline"]):
+        try:
+            info = proc.info
+            cmdline = info.get("cmdline") or []
+            if not cmdline:
+                continue
+
+            raw_cmd = " ".join(str(x) for x in cmdline if x is not None).strip()
+            if not raw_cmd:
+                continue
+
+            blocked_match = next((rule for rule in _blocked_commands if rule.lower() in raw_cmd.lower()), None)
+            observed.append({
+                "timestamp": datetime.fromtimestamp(info.get("create_time", now.timestamp()), tz=timezone.utc).isoformat(),
+                "pid": info.get("pid"),
+                "process": info.get("name") or "unknown",
+                "user": info.get("username") or "unknown",
+                "command": raw_cmd[:400],
+                "blocked_rule_match": blocked_match,
+            })
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess, OSError):
+            continue
+
+    observed.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
+
+    _command_observation_history.extend(observed[:200])
+    if len(_command_observation_history) > 5000:
+        del _command_observation_history[:-5000]
+
+    merged = (observed + list(reversed(_command_observation_history[-2000:])))[: max(limit * 2, 200)]
+    deduped: List[Dict[str, Any]] = []
+    seen = set()
+    for row in merged:
+        key = (row.get("pid"), row.get("command"))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(row)
+        if len(deduped) >= limit:
+            break
+
+    return {
+        "count": len(deduped),
+        "blocked_rule_count": len(_blocked_commands),
+        "commands": deduped,
+    }
+
+
+@app.get("/commands/suspicious")
+async def commands_suspicious(limit: int = 50):
+    """Score suspicious command executions using behavioral and pattern heuristics."""
+    history = await commands_history(limit=max(limit * 2, 120))
+    commands = history.get("commands", [])
+
+    suspicious_patterns = [
+        r"(?i)powershell\s+.*-enc(odedcommand)?\b",
+        r"(?i)cmd\.exe\s+/c\s+.*(bitsadmin|certutil|wmic)",
+        r"(?i)rundll32\b",
+        r"(?i)reg\s+add\b",
+        r"(?i)schtasks\s+/create\b",
+        r"(?i)net\s+user\b.* /add",
+        r"(?i)mimikatz|procdump|lsass",
+        r"(?i)vssadmin\s+delete\s+shadows",
+        r"(?i)bcdedit\b.*recoveryenabled",
+    ]
+
+    findings: List[Dict[str, Any]] = []
+    for item in commands:
+        cmd = item.get("command", "")
+        score = 0
+        reasons = []
+
+        for pat in suspicious_patterns:
+            if re.search(pat, cmd):
+                score += 28
+                reasons.append(f"matched pattern: {pat}")
+
+        if item.get("blocked_rule_match"):
+            score += 35
+            reasons.append("matches blocked command rule")
+
+        if " -nop " in cmd.lower() or " -w hidden" in cmd.lower():
+            score += 18
+            reasons.append("stealth execution flags detected")
+
+        if score >= 35:
+            findings.append({
+                **item,
+                "risk_score": min(100, score),
+                "severity": "high" if score >= 70 else "medium",
+                "reasons": reasons,
+            })
+
+    findings.sort(key=lambda x: x.get("risk_score", 0), reverse=True)
+    limit = _safe_limit(limit, default=50, minimum=1, maximum=300)
+    findings = findings[:limit]
+
+    return {
+        "count": len(findings),
+        "blocked_rules": list(_blocked_commands.keys()),
+        "suspicious_commands": findings,
+    }
+
+
+@app.post("/commands/block/{command}")
+async def commands_block(command: str, payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Create or update a blocked command rule used by command detection endpoints."""
+    rule = (command or "").strip()
+    if not rule:
+        raise HTTPException(status_code=400, detail="command rule cannot be empty")
+
+    _blocked_commands[rule] = {
+        "rule": rule,
+        "reason": str(payload.get("reason", "manual policy action")),
+        "created_by": str(payload.get("created_by", "system")),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "active": True,
+    }
+
+    return {
+        "status": "blocked",
+        "rule": _blocked_commands[rule],
+        "total_blocked_rules": len(_blocked_commands),
+    }
+
+
+# --- Phase 53: Lateral Movement Detection (Deep Implementation) ---
+
+@app.get("/network/lateral-movement")
+async def network_lateral_movement():
+    """Detect potential lateral movement based on east-west behavior and identity risk overlap."""
+    traffic = await network_traffic()
+    insider = await insider_risk_scores()
+    suspicious_cmds = await commands_suspicious(limit=100)
+
+    suspicious_connections = int(traffic.get("suspicious_connections", 0))
+    high_risk_identities = int(insider.get("high_risk_identities", 0))
+    suspicious_command_count = int(suspicious_cmds.get("count", 0))
+
+    indicators = []
+    score = 0
+    if suspicious_connections >= 8:
+        indicators.append("high suspicious east-west connection volume")
+        score += 30
+    if high_risk_identities >= 2:
+        indicators.append("multiple high-risk identities active")
+        score += 25
+    if suspicious_command_count >= 5:
+        indicators.append("suspicious admin command activity detected")
+        score += 30
+
+    risk_score = min(100, score)
+    classification = "low" if risk_score < 30 else "moderate" if risk_score < 60 else "high"
+
+    finding = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "risk_score": risk_score,
+        "classification": classification,
+        "indicators": indicators,
+        "metrics": {
+            "suspicious_connections": suspicious_connections,
+            "high_risk_identities": high_risk_identities,
+            "suspicious_commands": suspicious_command_count,
+        },
+    }
+
+    if risk_score >= 60:
+        alert = {
+            "alert_id": f"lat-{uuid.uuid4().hex[:10]}",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "severity": "high" if risk_score >= 80 else "medium",
+            "title": "Potential lateral movement detected",
+            "finding": finding,
+        }
+        _lateral_movement_alerts.append(alert)
+        if len(_lateral_movement_alerts) > 2000:
+            del _lateral_movement_alerts[:-2000]
+        finding["alert_id"] = alert["alert_id"]
+
+    return finding
+
+
+@app.get("/network/lateral-alerts")
+async def network_lateral_alerts(limit: int = 100):
+    """Return recent lateral movement alerts generated by network and identity correlation logic."""
+    limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
+    recent = _lateral_movement_alerts[-limit:]
+    severity_breakdown = dict(Counter(item.get("severity", "unknown") for item in recent))
+
+    return {
+        "count": len(recent),
+        "severity_breakdown": severity_breakdown,
+        "alerts": list(reversed(recent)),
     }
 
 

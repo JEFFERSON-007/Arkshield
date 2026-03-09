@@ -277,18 +277,30 @@ Capabilities:
 - Live telemetry-derived baseline model training
 - Baseline drift and anomaly detection scoring
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 52 - Suspicious Command Detection
+
+Endpoints:
 - `GET /commands/history`
 - `GET /commands/suspicious`
 - `POST /commands/block/{command}`
 
+Capabilities:
+- Process-backed command telemetry collection and retention
+- Pattern and blocklist-driven suspicious command scoring
+
 ### Phase 53 - Lateral Movement Detection
+
+Endpoints:
 - `GET /network/lateral-movement`
 - `GET /network/lateral-alerts`
+
+Capabilities:
+- East-west movement signal correlation with identity and command risk
+- Persistent lateral movement alert generation and retrieval
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 54 - MITRE ATTACK Mapping
 - `GET /threat/mitre`

@@ -1,8 +1,20 @@
 # Arkshield
 
+**🛡️ Autonomous Cyber Defense Platform with Cross-Platform Support**
+
 Arkshield is an autonomous cyber defense platform for endpoint monitoring, telemetry correlation, AI-assisted threat analysis, and automated response playbooks.
 
+**✅ Cross-Platform**: Fully supports **Windows** and **Linux** with platform-specific optimizations. macOS support planned.
+
 This repository also includes a standalone storage cleanup utility (`storage-manager.py` and `src/storage_manager/`) for system hygiene workflows.
+
+## 🌐 Platform Support
+
+- **Windows 10/11**: Full support with Registry monitoring, WMI queries, Windows services, netsh firewall
+- **Linux**: Ubuntu, Debian, RHEL, CentOS, Fedora with systemd, ufw/firewalld/iptables, NFS/Samba
+- **Cross-Platform**: Automatic platform detection and API adaptation
+
+See [CROSS_PLATFORM_REPORT.md](CROSS_PLATFORM_REPORT.md) for detailed compatibility information.
 
 ## Core Features
 

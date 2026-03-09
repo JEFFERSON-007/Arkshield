@@ -77,7 +77,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /security/privilege-events` + `GET /security/admin-actions` (Phase 33): Privilege escalation indicators and admin action monitoring.
 - `GET /ransomware/alerts` + `POST /ransomware/simulate` (Phase 34): Ransomware behavior detection and safe simulation workflows.
 - `GET /security/credential-theft` + `GET /security/auth-anomalies` (Phase 35): Credential theft signal detection and authentication anomaly analytics.
-- Phases 36-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /dns/logs` + `GET /dns/suspicious` + `POST /dns/block/{domain}` (Phase 36): DNS monitoring, suspicious-domain detection, and policy-layer blocking.
+- `GET /network/traffic` + `GET /network/anomalies` (Phase 37): Traffic sampling with baseline-driven anomaly detection.
+- Phases 38-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

@@ -114,18 +114,30 @@ Capabilities:
 - Detect credential dumping
 - Login anomaly detection
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
-
 ### Phase 36 - DNS Security Monitoring
+
+Endpoints:
 - `GET /dns/logs`
 - `GET /dns/suspicious`
 - `POST /dns/block/{domain}`
 
+Capabilities:
+- Detect malicious domains
+- Block C2 servers
+
 ### Phase 37 - Network Traffic Analysis
+
+Endpoints:
 - `GET /network/traffic`
 - `GET /network/anomalies`
+
+Capabilities:
+- Traffic monitoring
+- Abnormal flow detection
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
 
 ### Phase 38 - Insider Threat Detection
 - `GET /insider/activity`

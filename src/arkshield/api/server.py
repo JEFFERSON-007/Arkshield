@@ -42,6 +42,8 @@ _integrity_alerts: List[Dict[str, Any]] = []
 _blocked_devices: Dict[str, Dict[str, Any]] = {}
 _device_history: List[Dict[str, Any]] = []
 _ransomware_simulations: List[Dict[str, Any]] = []
+_dns_blocked_domains: Dict[str, Dict[str, Any]] = {}
+_network_traffic_snapshots: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -4043,6 +4045,251 @@ async def security_auth_anomalies(
     return {
         "count": len(anomalies),
         "anomalies": anomalies[:500],
+    }
+
+
+# --- Phase 36: DNS Security Monitoring (Deep Implementation) ---
+
+@app.get("/dns/logs")
+async def dns_logs(
+    window_hours: int = 72,
+    limit: int = 2500,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Collect DNS-related logs from telemetry and summarize queried domains."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=_safe_limit(window_hours, default=72, minimum=1, maximum=720))
+    events = sentinel.repository.get_recent_events(limit=_safe_limit(limit, default=2500, minimum=100, maximum=10000))
+
+    domain_counts: Dict[str, int] = {}
+    logs: List[Dict[str, Any]] = []
+
+    domain_re = re.compile(r"\b([a-z0-9][a-z0-9\-]{0,62}(?:\.[a-z0-9][a-z0-9\-]{0,62})+)\b", re.IGNORECASE)
+
+    for evt in events:
+        ts = _parse_iso_datetime(evt.timestamp)
+        if ts and ts < cutoff:
+            continue
+
+        if evt.event_class != "network_activity" and "dns" not in (evt.event_type or "").lower():
+            blob_probe = " ".join([
+                evt.description or "",
+                str(evt.metadata or ""),
+                evt.raw_data or "",
+            ]).lower()
+            if "dns" not in blob_probe:
+                continue
+
+        query = ""
+        if evt.network and evt.network.dns_query:
+            query = evt.network.dns_query
+        if not query:
+            text_blob = " ".join([
+                evt.description or "",
+                str(evt.metadata or ""),
+                evt.raw_data or "",
+            ])
+            match = domain_re.search(text_blob)
+            if match:
+                query = match.group(1)
+
+        query = (query or "").strip().lower()
+        if not query:
+            continue
+
+        domain_counts[query] = domain_counts.get(query, 0) + 1
+        logs.append({
+            "event_id": evt.event_id,
+            "timestamp": evt.timestamp,
+            "query": query,
+            "event_type": evt.event_type,
+            "risk_score": evt.risk_score,
+            "blocked": query in _dns_blocked_domains,
+        })
+
+    top_domains = sorted(domain_counts.items(), key=lambda kv: kv[1], reverse=True)[:50]
+    return {
+        "window_hours": window_hours,
+        "count": len(logs),
+        "top_domains": [{"domain": d, "count": c} for d, c in top_domains],
+        "blocked_domains": list(_dns_blocked_domains.values()),
+        "logs": logs[:500],
+    }
+
+
+@app.get("/dns/suspicious")
+async def dns_suspicious(
+    window_hours: int = 72,
+    limit: int = 2500,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Detect suspicious domain queries and possible C2 indicators."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=_safe_limit(window_hours, default=72, minimum=1, maximum=720))
+    events = sentinel.repository.get_recent_events(limit=_safe_limit(limit, default=2500, minimum=100, maximum=10000))
+
+    suspicious_tlds = {"zip", "mov", "xyz", "top", "click", "gq", "tk", "work", "support"}
+    suspicious_keywords = {"login", "verify", "update", "secure", "wallet", "bonus", "free", "crypto"}
+    suspicious: List[Dict[str, Any]] = []
+
+    for evt in events:
+        ts = _parse_iso_datetime(evt.timestamp)
+        if ts and ts < cutoff:
+            continue
+
+        query = ""
+        if evt.network and evt.network.dns_query:
+            query = evt.network.dns_query.strip().lower()
+        if not query:
+            continue
+
+        reasons = []
+        tld = query.rsplit(".", 1)[-1] if "." in query else ""
+        if tld in suspicious_tlds:
+            reasons.append(f"suspicious_tld:{tld}")
+        if any(k in query for k in suspicious_keywords):
+            reasons.append("phishing_keyword")
+        if len(query) > 60:
+            reasons.append("long_domain")
+        if query in _dns_blocked_domains:
+            reasons.append("already_blocked")
+        if float(evt.risk_score or 0.0) >= 70:
+            reasons.append("high_risk_event")
+
+        if not reasons:
+            continue
+
+        risk_score = min(100, int(20 + 12 * len(reasons) + float(evt.risk_score or 0.0) * 0.3))
+        suspicious.append({
+            "domain": query,
+            "timestamp": evt.timestamp,
+            "event_id": evt.event_id,
+            "event_type": evt.event_type,
+            "reasons": reasons,
+            "risk_score": risk_score,
+        })
+
+    suspicious.sort(key=lambda x: x["risk_score"], reverse=True)
+    return {
+        "window_hours": window_hours,
+        "count": len(suspicious),
+        "suspicious": suspicious[:500],
+    }
+
+
+@app.post("/dns/block/{domain}")
+async def dns_block(domain: str, reason: str = "C2 prevention policy"):
+    """Block a domain at Arkshield policy layer for DNS enforcement integration."""
+    normalized = (domain or "").strip().lower()
+    if not normalized or "." not in normalized:
+        raise HTTPException(status_code=400, detail="domain must be valid")
+
+    record = {
+        "domain": normalized,
+        "blocked_at": datetime.now(timezone.utc).isoformat(),
+        "reason": reason,
+        "enforcement": "policy-layer",
+        "note": "Integrate with DNS sinkhole/firewall resolver controls for hard block enforcement.",
+    }
+    _dns_blocked_domains[normalized] = record
+
+    return {
+        "blocked": True,
+        "domain": record,
+        "blocked_count": len(_dns_blocked_domains),
+    }
+
+
+# --- Phase 37: Network Traffic Analysis (Deep Implementation) ---
+
+@app.get("/network/traffic")
+async def network_traffic(sample_seconds: int = 1):
+    """Capture network traffic counters and connection-state summary."""
+    import psutil
+
+    sample_seconds = _safe_limit(sample_seconds, default=1, minimum=1, maximum=10)
+    io_1 = psutil.net_io_counters()
+    time.sleep(sample_seconds)
+    io_2 = psutil.net_io_counters()
+
+    delta_sent = max(0, io_2.bytes_sent - io_1.bytes_sent)
+    delta_recv = max(0, io_2.bytes_recv - io_1.bytes_recv)
+    bps_sent = round(delta_sent / sample_seconds, 2)
+    bps_recv = round(delta_recv / sample_seconds, 2)
+
+    state_counts: Dict[str, int] = {}
+    proto_counts = {"tcp": 0, "udp": 0}
+    connections = psutil.net_connections(kind="inet")
+    for conn in connections:
+        status = (conn.status or "unknown").lower()
+        state_counts[status] = state_counts.get(status, 0) + 1
+        if conn.type == 1:
+            proto_counts["tcp"] += 1
+        elif conn.type == 2:
+            proto_counts["udp"] += 1
+
+    snapshot = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "sample_seconds": sample_seconds,
+        "bytes_sent_per_sec": bps_sent,
+        "bytes_recv_per_sec": bps_recv,
+        "connections_total": len(connections),
+        "state_counts": state_counts,
+        "protocol_counts": proto_counts,
+    }
+    _network_traffic_snapshots.append(snapshot)
+    if len(_network_traffic_snapshots) > 1000:
+        del _network_traffic_snapshots[:-1000]
+
+    return snapshot
+
+
+@app.get("/network/anomalies")
+async def network_anomalies(limit: int = 200):
+    """Detect abnormal traffic flow using snapshot baseline deviation and connection spikes."""
+    max_items = _safe_limit(limit, default=200, minimum=1, maximum=1000)
+    snapshots = _network_traffic_snapshots[-max(20, max_items):]
+    if len(snapshots) < 3:
+        return {
+            "count": 0,
+            "anomalies": [],
+            "note": "Not enough traffic samples yet; call /network/traffic a few times first.",
+        }
+
+    avg_sent = sum(item["bytes_sent_per_sec"] for item in snapshots[:-1]) / max(1, len(snapshots) - 1)
+    avg_recv = sum(item["bytes_recv_per_sec"] for item in snapshots[:-1]) / max(1, len(snapshots) - 1)
+    avg_conn = sum(item["connections_total"] for item in snapshots[:-1]) / max(1, len(snapshots) - 1)
+
+    anomalies: List[Dict[str, Any]] = []
+    for item in snapshots:
+        reasons = []
+        if avg_sent > 0 and item["bytes_sent_per_sec"] > avg_sent * 3:
+            reasons.append("egress_spike")
+        if avg_recv > 0 and item["bytes_recv_per_sec"] > avg_recv * 3:
+            reasons.append("ingress_spike")
+        if avg_conn > 0 and item["connections_total"] > avg_conn * 2.5:
+            reasons.append("connection_spike")
+        if item["state_counts"].get("syn_sent", 0) > 100:
+            reasons.append("possible_scan_or_flood")
+
+        if not reasons:
+            continue
+
+        severity = "high" if len(reasons) >= 2 else "medium"
+        anomalies.append({
+            "timestamp": item["timestamp"],
+            "reasons": reasons,
+            "severity": severity,
+            "snapshot": item,
+        })
+
+    anomalies = list(reversed(anomalies))[:max_items]
+    return {
+        "count": len(anomalies),
+        "baseline": {
+            "avg_sent_bps": round(avg_sent, 2),
+            "avg_recv_bps": round(avg_recv, 2),
+            "avg_connections": round(avg_conn, 2),
+        },
+        "anomalies": anomalies,
     }
 
 

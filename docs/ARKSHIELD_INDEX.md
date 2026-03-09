@@ -47,3 +47,6 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 
 ### MVP Timeline
 16 weeks with 4-6 engineers → Windows agent + cloud analysis + AI detection + dashboard
+
+### Runtime Progress
+- Implemented API phases now include **Phase 24** (`GET /threat/posture`) for live threat posture scoring and prioritization.

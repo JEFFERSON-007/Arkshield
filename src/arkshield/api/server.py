@@ -10,6 +10,8 @@ import time
 import logging
 import platform
 import shutil
+from collections import Counter
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -49,6 +51,19 @@ def _resolve_first_command(*candidates: str) -> Optional[str]:
         if shutil.which(command):
             return command
     return None
+
+
+def _parse_iso_datetime(value: str) -> Optional[datetime]:
+    """Parse ISO timestamps from telemetry objects into timezone-aware datetimes."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except ValueError:
+        return None
 
 def get_sentinel() -> NexusSentinel:
     global _sentinel
@@ -2340,6 +2355,169 @@ async def network_security_audit():
             "error": str(e),
             "risk_score": 100,
             "summary": f"Audit failed: {str(e)}"
+        }
+
+
+# --- Phase 24: Threat Posture & Prioritization ---
+
+@app.get("/threat/posture")
+async def threat_posture(
+    window_hours: int = 24,
+    event_limit: int = 500,
+    alert_limit: int = 200,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Summarize threat posture, pressure, and response priorities for the recent time window."""
+    now = datetime.now(timezone.utc)
+    window_hours = _safe_limit(window_hours, default=24, minimum=1, maximum=168)
+    event_limit = _safe_limit(event_limit, default=500, minimum=50, maximum=2000)
+    alert_limit = _safe_limit(alert_limit, default=200, minimum=25, maximum=1000)
+    cutoff = now - timedelta(hours=window_hours)
+
+    try:
+        events = sentinel.repository.get_recent_events(limit=event_limit)
+        alerts = sentinel.repository.get_recent_alerts(limit=alert_limit)
+
+        recent_events = []
+        for event in events:
+            ts = _parse_iso_datetime(event.timestamp)
+            if ts and ts >= cutoff:
+                recent_events.append(event)
+
+        recent_alerts = []
+        for alert in alerts:
+            ts = _parse_iso_datetime(alert.created_at)
+            if ts and ts >= cutoff:
+                recent_alerts.append(alert)
+
+        threat_events = [evt for evt in recent_events if evt.is_threat]
+        active_alerts = [
+            alert for alert in recent_alerts
+            if alert.status not in {"resolved", "false_positive", "suppressed"}
+        ]
+
+        severity_labels = {
+            0: "info",
+            1: "low",
+            2: "medium",
+            3: "high",
+            4: "critical",
+        }
+        severity_counts = {label: 0 for label in severity_labels.values()}
+        for event in recent_events:
+            label = severity_labels.get(int(event.severity), "info")
+            severity_counts[label] += 1
+
+        event_class_counts = Counter(evt.event_class for evt in threat_events)
+        event_type_counts = Counter(evt.event_type for evt in threat_events)
+
+        avg_threat_risk = 0.0
+        if threat_events:
+            avg_threat_risk = round(
+                sum(float(evt.risk_score or 0) for evt in threat_events) / len(threat_events),
+                2,
+            )
+
+        alert_risk_avg = 0.0
+        if recent_alerts:
+            alert_risk_avg = round(
+                sum(float(alert.risk_score or 0) for alert in recent_alerts) / len(recent_alerts),
+                2,
+            )
+
+        threat_density = 0.0
+        if recent_events:
+            threat_density = round(len(threat_events) / len(recent_events), 3)
+
+        critical_events = severity_counts["critical"]
+        high_events = severity_counts["high"]
+
+        posture_score = 100
+        if threat_density > 0.40:
+            posture_score -= 25
+        elif threat_density > 0.20:
+            posture_score -= 12
+
+        if critical_events >= 5:
+            posture_score -= 30
+        elif critical_events >= 2:
+            posture_score -= 18
+
+        if high_events >= 10:
+            posture_score -= 15
+        elif high_events >= 5:
+            posture_score -= 8
+
+        if len(active_alerts) >= 20:
+            posture_score -= 15
+        elif len(active_alerts) >= 8:
+            posture_score -= 8
+
+        if avg_threat_risk >= 75:
+            posture_score -= 15
+        elif avg_threat_risk >= 55:
+            posture_score -= 8
+
+        posture_score = max(0, min(100, posture_score))
+
+        if posture_score >= 85:
+            posture_level = "stable"
+        elif posture_score >= 65:
+            posture_level = "elevated"
+        elif posture_score >= 40:
+            posture_level = "high-risk"
+        else:
+            posture_level = "critical"
+
+        recommendations: List[str] = []
+        if critical_events > 0:
+            recommendations.append("Escalate and triage all critical events immediately")
+        if len(active_alerts) > 0:
+            recommendations.append("Review active alerts and assign response ownership")
+        if threat_density > 0.20:
+            recommendations.append("Enable stricter containment rules for high-risk process and network events")
+        if "network_activity" in event_class_counts:
+            recommendations.append("Run /network/security-audit to validate exposed services and risky ports")
+        if avg_threat_risk >= 55:
+            recommendations.append("Prioritize playbook automation for recurring high-risk detections")
+        if not recommendations:
+            recommendations.append("Maintain current controls and continue baseline monitoring")
+
+        return {
+            "window": {
+                "hours": window_hours,
+                "from": cutoff.isoformat(),
+                "to": now.isoformat(),
+            },
+            "summary": {
+                "posture_score": posture_score,
+                "posture_level": posture_level,
+                "total_events": len(recent_events),
+                "threat_events": len(threat_events),
+                "total_alerts": len(recent_alerts),
+                "active_alerts": len(active_alerts),
+                "threat_density": threat_density,
+                "average_threat_risk": avg_threat_risk,
+                "average_alert_risk": alert_risk_avg,
+            },
+            "severity_distribution": severity_counts,
+            "top_threat_event_classes": [
+                {"event_class": key, "count": value}
+                for key, value in event_class_counts.most_common(5)
+            ],
+            "top_threat_event_types": [
+                {"event_type": key, "count": value}
+                for key, value in event_type_counts.most_common(8)
+            ],
+            "recommendations": recommendations,
+        }
+    except Exception as exc:
+        logger.error(f"Threat posture analysis failed: {exc}")
+        return {
+            "error": str(exc),
+            "posture_score": 0,
+            "posture_level": "critical",
+            "summary": "Threat posture analysis failed",
         }
 
 # --- Entry Point ---

@@ -63,6 +63,10 @@ python storage-manager.py clean . --dry-run
 
 Dashboard frontend file: `src/arkshield/api/dashboard.html`
 
+## API Highlight
+
+- `GET /threat/posture` (Phase 24): Aggregates recent events and alerts into a posture score, threat density, severity distribution, and prioritized recommendations.
+
 ## Documentation
 
 Architecture and platform design docs are in `docs/`.

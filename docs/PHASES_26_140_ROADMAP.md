@@ -434,17 +434,35 @@ Capabilities:
 - Stale session identification and anomalous behavior flagging
 - Threshold-based suspicious session filtering with top indicator analytics
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 66 - Email Threat Intelligence
+
+Endpoints:
 - `GET /email/phishing`
 - `GET /email/malware`
 
+Capabilities:
+- Phishing email detection (credential harvesting, brand impersonation, business email compromise)
+- Malware-laden email identification with attachment analysis
+- Malware family classification (trojan, macro malware, ransomware)
+- Risk-based verdict assignment and quarantine/blocking actions
+- Top indicator analytics for phishing and malware campaigns
+
 ### Phase 67 - Browser Security Monitoring
+
+Endpoints:
 - `GET /browser/extensions`
 - `GET /browser/suspicious`
+
+Capabilities:
+- Browser extension inventory across Chrome, Firefox, and other browsers
+- Extension risk profiling based on permissions, publisher verification, and behavior
+- Detection of cryptominers, data harvesters, and unauthorized extensions
+- Recently installed extension tracking and obfuscated code identification
+- Threshold-based suspicious extension filtering with top indicator analytics
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 68 - Data Exfiltration Detection
 - `GET /security/data-exfiltration`

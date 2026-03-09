@@ -91,5 +91,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 63** (`/auth/logins`, `/auth/anomalies`) with authentication monitoring including brute force detection, impossible travel analysis, and account enumeration identification.
 - Implemented **Phase 64** (`/auth/bruteforce`, `/auth/block/{ip}`) with brute force attack detection (credential stuffing, password spray), risk-based categorization, and reactive IP blocking.
 - Implemented **Phase 65** (`/sessions`, `/sessions/suspicious`) with session monitoring covering hijacking detection, concurrent login analysis, stale session identification, and suspicion-based filtering.
-- Implemented baseline endpoints for remaining **Phases 66-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 66** (`/email/phishing`, `/email/malware`) with email threat intelligence covering phishing detection (brand impersonation, BEC, credential harvesting) and malware attachment analysis with family classification.
+- Implemented **Phase 67** (`/browser/extensions`, `/browser/suspicious`) with browser security monitoring including extension risk profiling, permission analysis, and detection of cryptominers, data harvesters, and unauthorized extensions.
+- Implemented baseline endpoints for remaining **Phases 68-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

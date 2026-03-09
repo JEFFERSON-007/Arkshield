@@ -110,6 +110,10 @@ _bruteforce_detections: List[Dict[str, Any]] = []
 _blocked_ips: Dict[str, Dict[str, Any]] = {}
 _session_cache: List[Dict[str, Any]] = []
 _suspicious_sessions: List[Dict[str, Any]] = []
+_phishing_emails: List[Dict[str, Any]] = []
+_malware_emails: List[Dict[str, Any]] = []
+_browser_extensions: List[Dict[str, Any]] = []
+_suspicious_extensions: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -7991,6 +7995,343 @@ async def sessions_suspicious(threshold: int = 60):
         "risk_distribution": risk_categories,
         "top_indicators": indicator_frequency,
         "sessions": _suspicious_sessions,
+    }
+
+
+# ========================================
+# Phase 66 - Email Threat Intelligence
+# ========================================
+
+def _simulate_email_threats() -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Generate simulated email threats for phishing and malware detection."""
+    base_time = datetime.now(timezone.utc)
+    
+    phishing_emails = [
+        {
+            "id": str(uuid.uuid4())[:8],
+            "from": "security@paypa1.com",
+            "subject": "Urgent: Verify Your Account",
+            "received_at": (base_time - timedelta(hours=2)).isoformat(),
+            "recipient": "user@company.com",
+            "risk_score": 95,
+            "indicators": ["domain_typosquatting", "urgency_language", "suspicious_link"],
+            "verdict": "phishing",
+            "status": "quarantined",
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "from": "billing@amaz0n.com",
+            "subject": "Your order has been shipped",
+            "received_at": (base_time - timedelta(hours=5)).isoformat(),
+            "recipient": "user@company.com",
+            "risk_score": 90,
+            "indicators": ["domain_typosquatting", "suspicious_link"],
+            "verdict": "phishing",
+            "status": "blocked",
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "from": "ceo@external-domain.com",
+            "subject": "URGENT: Wire Transfer Request",
+            "received_at": (base_time - timedelta(minutes=30)).isoformat(),
+            "recipient": "finance@company.com",
+            "risk_score": 98,
+            "indicators": ["executive_impersonation", "urgency_language", "financial_request"],
+            "verdict": "business_email_compromise",
+            "status": "quarantined",
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "from": "noreply@microsoft-support.net",
+            "subject": "Your Microsoft account will be closed",
+            "received_at": (base_time - timedelta(days=1)).isoformat(),
+            "recipient": "user@company.com",
+            "risk_score": 85,
+            "indicators": ["brand_impersonation", "urgency_language", "credential_harvesting"],
+            "verdict": "phishing",
+            "status": "quarantined",
+        },
+    ]
+    
+    malware_emails = [
+        {
+            "id": str(uuid.uuid4())[:8],
+            "from": "invoice@supplier-corp.com",
+            "subject": "Invoice #12345 - Payment Due",
+            "attachment": "invoice_12345.pdf.exe",
+            "received_at": (base_time - timedelta(hours=3)).isoformat(),
+            "recipient": "accounting@company.com",
+            "risk_score": 95,
+            "indicators": ["malicious_attachment", "double_extension", "executable_disguised"],
+            "malware_family": "trojan",
+            "status": "blocked",
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "from": "hr@recruitment-agency.com",
+            "subject": "Job Application - Resume Attached",
+            "attachment": "resume.docm",
+            "received_at": (base_time - timedelta(hours=6)).isoformat(),
+            "recipient": "hr@company.com",
+            "risk_score": 88,
+            "indicators": ["macro_enabled_document", "suspicious_attachment"],
+            "malware_family": "macro_malware",
+            "status": "quarantined",
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "from": "shipping@logistics-partner.com",
+            "subject": "Delivery Notification #789456",
+            "attachment": "delivery_details.zip",
+            "received_at": (base_time - timedelta(days=1)).isoformat(),
+            "recipient": "operations@company.com",
+            "risk_score": 92,
+            "indicators": ["suspicious_archive", "malicious_payload"],
+            "malware_family": "ransomware",
+            "status": "blocked",
+        },
+    ]
+    
+    return phishing_emails, malware_emails
+
+
+@app.get("/email/phishing")
+async def email_phishing(refresh: bool = False):
+    """
+    Detect phishing emails including credential harvesting, brand impersonation,
+    and business email compromise attempts.
+    """
+    global _phishing_emails, _malware_emails
+    
+    if refresh or not _phishing_emails:
+        _phishing_emails, _malware_emails = _simulate_email_threats()
+    
+    # Verdict distribution
+    verdict_counts = dict(Counter(e.get("verdict", "unknown") for e in _phishing_emails))
+    
+    # Status distribution
+    status_counts = dict(Counter(e.get("status", "unknown") for e in _phishing_emails))
+    
+    # Risk categorization
+    risk_categories = {"high": 0, "critical": 0}
+    for email in _phishing_emails:
+        score = email.get("risk_score", 0)
+        if score < 90:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    # Top indicators
+    all_indicators = []
+    for email in _phishing_emails:
+        all_indicators.extend(email.get("indicators", []))
+    top_indicators = dict(Counter(all_indicators).most_common(5))
+    
+    return {
+        "total_phishing": len(_phishing_emails),
+        "verdict_distribution": verdict_counts,
+        "status_distribution": status_counts,
+        "risk_distribution": risk_categories,
+        "top_indicators": top_indicators,
+        "emails": _phishing_emails,
+    }
+
+
+@app.get("/email/malware")
+async def email_malware(refresh: bool = False):
+    """
+    Detect malware-laden emails with malicious attachments, payloads,
+    and exploit kits. Tracks malware families and delivery methods.
+    """
+    global _phishing_emails, _malware_emails
+    
+    if refresh or not _malware_emails:
+        _phishing_emails, _malware_emails = _simulate_email_threats()
+    
+    # Malware family distribution
+    family_counts = dict(Counter(e.get("malware_family", "unknown") for e in _malware_emails))
+    
+    # Status distribution
+    status_counts = dict(Counter(e.get("status", "unknown") for e in _malware_emails))
+    
+    # Risk categorization
+    risk_categories = {"high": 0, "critical": 0}
+    for email in _malware_emails:
+        score = email.get("risk_score", 0)
+        if score < 90:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    # Top indicators
+    all_indicators = []
+    for email in _malware_emails:
+        all_indicators.extend(email.get("indicators", []))
+    top_indicators = dict(Counter(all_indicators).most_common(5))
+    
+    return {
+        "total_malware": len(_malware_emails),
+        "malware_families": family_counts,
+        "status_distribution": status_counts,
+        "risk_distribution": risk_categories,
+        "top_indicators": top_indicators,
+        "emails": _malware_emails,
+    }
+
+
+# ========================================
+# Phase 67 - Browser Security Monitoring
+# ========================================
+
+def _simulate_browser_extensions() -> List[Dict[str, Any]]:
+    """Generate simulated browser extension data for security monitoring."""
+    base_time = datetime.now(timezone.utc)
+    
+    extensions = [
+        {
+            "id": str(uuid.uuid4())[:8],
+            "name": "AdBlock Plus",
+            "extension_id": "cfhdojbkjhnklbpkdaibdccddilifddb",
+            "version": "3.14.2",
+            "browser": "Chrome",
+            "installed_at": (base_time - timedelta(days=180)).isoformat(),
+            "permissions": ["tabs", "webNavigation", "storage"],
+            "risk_score": 15,
+            "suspicious_indicators": [],
+            "status": "trusted",
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "name": "Grammarly",
+            "extension_id": "kbfnbcaeplbcioakkpcpgfkobkghlhen",
+            "version": "14.1076.0",
+            "browser": "Chrome",
+            "installed_at": (base_time - timedelta(days=90)).isoformat(),
+            "permissions": ["storage", "cookies", "webRequest"],
+            "risk_score": 25,
+            "suspicious_indicators": [],
+            "status": "trusted",
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "name": "Password Manager Pro",
+            "extension_id": "abcdef1234567890abcdef1234567890",
+            "version": "1.0.0",
+            "browser": "Chrome",
+            "installed_at": (base_time - timedelta(days=2)).isoformat(),
+            "permissions": ["tabs", "webRequest", "storage", "cookies", "<all_urls>"],
+            "risk_score": 85,
+            "suspicious_indicators": ["excessive_permissions", "recently_installed", "unverified_publisher"],
+            "status": "suspicious",
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "name": "CryptoMiner Extension",
+            "extension_id": "xyz9876543210xyz9876543210xyz987",
+            "version": "2.3.1",
+            "browser": "Firefox",
+            "installed_at": (base_time - timedelta(days=7)).isoformat(),
+            "permissions": ["tabs", "storage", "backgroundPage"],
+            "risk_score": 95,
+            "suspicious_indicators": ["cryptomining_detected", "excessive_cpu_usage", "unauthorized_network"],
+            "status": "malicious",
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "name": "Data Harvester",
+            "extension_id": "malicious1234abcd5678efgh9012ijkl",
+            "version": "1.5.0",
+            "browser": "Chrome",
+            "installed_at": (base_time - timedelta(hours=12)).isoformat(),
+            "permissions": ["tabs", "cookies", "webRequest", "webRequestBlocking", "<all_urls>"],
+            "risk_score": 98,
+            "suspicious_indicators": ["data_exfiltration", "excessive_permissions", "obfuscated_code", "recently_installed"],
+            "status": "malicious",
+        },
+    ]
+    
+    return extensions
+
+
+@app.get("/browser/extensions")
+async def browser_extensions(refresh: bool = False):
+    """
+    List all browser extensions installed across monitored endpoints.
+    Tracks extension permissions, versions, and risk profiles.
+    """
+    global _browser_extensions
+    
+    if refresh or not _browser_extensions:
+        _browser_extensions = _simulate_browser_extensions()
+    
+    # Status distribution
+    status_counts = dict(Counter(e.get("status", "unknown") for e in _browser_extensions))
+    
+    # Browser distribution
+    browser_counts = dict(Counter(e.get("browser", "unknown") for e in _browser_extensions))
+    
+    # Risk categorization
+    risk_categories = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    for ext in _browser_extensions:
+        score = ext.get("risk_score", 0)
+        if score < 40:
+            risk_categories["low"] += 1
+        elif score < 65:
+            risk_categories["medium"] += 1
+        elif score < 85:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    # Average risk score
+    avg_risk = sum(e.get("risk_score", 0) for e in _browser_extensions) / len(_browser_extensions) if _browser_extensions else 0
+    
+    return {
+        "total_extensions": len(_browser_extensions),
+        "status_distribution": status_counts,
+        "browser_distribution": browser_counts,
+        "risk_distribution": risk_categories,
+        "avg_risk_score": round(avg_risk, 2),
+        "extensions": _browser_extensions,
+    }
+
+
+@app.get("/browser/suspicious")
+async def browser_suspicious(threshold: int = 60):
+    """
+    Filter browser extensions flagged as suspicious or malicious.
+    Identifies cryptominers, data harvesters, and unauthorized extensions.
+    """
+    global _browser_extensions, _suspicious_extensions
+    
+    # Ensure cache is populated
+    if not _browser_extensions:
+        _browser_extensions = _simulate_browser_extensions()
+    
+    # Filter by threshold
+    _suspicious_extensions = [
+        ext for ext in _browser_extensions
+        if ext.get("risk_score", 0) >= threshold
+    ]
+    
+    # Sort by risk score descending
+    _suspicious_extensions.sort(key=lambda e: e.get("risk_score", 0), reverse=True)
+    
+    # Status distribution
+    status_counts = dict(Counter(e.get("status", "unknown") for e in _suspicious_extensions))
+    
+    # Top indicators
+    all_indicators = []
+    for ext in _suspicious_extensions:
+        all_indicators.extend(ext.get("suspicious_indicators", []))
+    top_indicators = dict(Counter(all_indicators).most_common(5))
+    
+    return {
+        "threshold": threshold,
+        "suspicious_count": len(_suspicious_extensions),
+        "status_distribution": status_counts,
+        "top_indicators": top_indicators,
+        "extensions": _suspicious_extensions,
     }
 
 

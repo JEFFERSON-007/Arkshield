@@ -107,7 +107,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /auth/logins` + `GET /auth/anomalies` (Phase 63): Authentication monitoring with brute force detection, impossible travel tracking, and account enumeration alerts.
 - `GET /auth/bruteforce` + `POST /auth/block/{ip}` (Phase 64): Brute force attack detection with credential stuffing and password spray identification, plus IP blocking capabilities.
 - `GET /sessions` + `GET /sessions/suspicious` (Phase 65): Session monitoring with hijacking detection, concurrent login tracking, and anomalous behavior identification.
-- Phases 66-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /email/phishing` + `GET /email/malware` (Phase 66): Email threat intelligence with phishing detection (credential harvesting, BEC) and malware attachment analysis.
+- `GET /browser/extensions` + `GET /browser/suspicious` (Phase 67): Browser security monitoring with extension risk profiling, cryptominer detection, and data harvester identification.
+- Phases 68-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

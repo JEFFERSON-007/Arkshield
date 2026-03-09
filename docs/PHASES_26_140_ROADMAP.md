@@ -195,22 +195,29 @@ Endpoints:
 Capabilities:
 - Detect insecure cloud settings
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
-
 ### Phase 44 - Compliance Monitoring
+
+Endpoints:
 - `GET /compliance/status`
 - `GET /compliance/report`
 
-Frameworks:
-- ISO 27001
-- SOC2
-- NIST
+Capabilities:
+- ISO 27001, SOC2, and NIST-aligned compliance scoring
+- Remediation-focused compliance report generation
 
 ### Phase 45 - Risk Scoring Engine
+
+Endpoints:
 - `GET /risk/score`
 - `GET /risk/critical-assets`
+
+Capabilities:
+- Cross-domain weighted enterprise risk scoring
+- Critical asset prioritization with risk driver context
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 46 - Security Policy Engine
 - `GET /policy`

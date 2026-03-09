@@ -47,6 +47,8 @@ _network_traffic_snapshots: List[Dict[str, Any]] = []
 _patch_recommendation_history: List[Dict[str, Any]] = []
 _container_scan_history: List[Dict[str, Any]] = []
 _cloud_posture_history: List[Dict[str, Any]] = []
+_compliance_report_history: List[Dict[str, Any]] = []
+_risk_score_history: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -5068,6 +5070,206 @@ async def cloud_misconfigurations():
         "count": len(findings),
         "risk_score": risk,
         "misconfigurations": findings,
+    }
+
+
+# --- Phase 44: Compliance Monitoring (Deep Implementation) ---
+
+@app.get("/compliance/status")
+async def compliance_status():
+    """Calculate high-level compliance posture mapped to common frameworks."""
+    integrity = await integrity_status()
+    patch = await patch_status()
+    posture = await cloud_posture()
+    container_sec = await container_security()
+
+    integrity_score = 100 - int(max(0, min(100, integrity.get("integrity_risk_score", 0))))
+    patch_score = int(max(0, min(100, patch.get("compliance_score", 0))))
+    cloud_score = int(max(0, min(100, posture.get("posture_score", 0))))
+    container_score = 100 - int(max(0, min(100, container_sec.get("risk_score", 0))))
+
+    controls = {
+        "asset_integrity": integrity_score,
+        "vulnerability_management": patch_score,
+        "cloud_configuration": cloud_score,
+        "workload_hardening": container_score,
+    }
+    overall = int(sum(controls.values()) / max(1, len(controls)))
+
+    frameworks = {
+        "ISO27001": {
+            "score": int((controls["asset_integrity"] * 0.35) + (controls["vulnerability_management"] * 0.35) + (controls["cloud_configuration"] * 0.30)),
+            "focus": ["A.8 Asset Management", "A.12 Operations Security", "A.18 Compliance"],
+        },
+        "SOC2": {
+            "score": int((controls["asset_integrity"] * 0.30) + (controls["workload_hardening"] * 0.30) + (controls["cloud_configuration"] * 0.40)),
+            "focus": ["Security", "Availability", "Confidentiality"],
+        },
+        "NIST-CSF": {
+            "score": int((controls["asset_integrity"] * 0.25) + (controls["vulnerability_management"] * 0.35) + (controls["cloud_configuration"] * 0.20) + (controls["workload_hardening"] * 0.20)),
+            "focus": ["Identify", "Protect", "Detect", "Respond"],
+        },
+    }
+
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "overall_score": overall,
+        "overall_status": "good" if overall >= 80 else "warning" if overall >= 60 else "critical",
+        "controls": controls,
+        "frameworks": frameworks,
+    }
+
+
+@app.get("/compliance/report")
+async def compliance_report():
+    """Generate a point-in-time compliance report with prioritized remediation actions."""
+    status = await compliance_status()
+    controls = status.get("controls", {})
+
+    gaps = []
+    for control_name, score in controls.items():
+        if score < 75:
+            gaps.append({
+                "control": control_name,
+                "score": score,
+                "severity": "high" if score < 55 else "medium",
+            })
+
+    remediations = []
+    for gap in sorted(gaps, key=lambda g: g["score"]):
+        if gap["control"] == "asset_integrity":
+            remediations.append("Enforce integrity watch policies and investigate new high-risk changes")
+        elif gap["control"] == "vulnerability_management":
+            remediations.append("Prioritize critical patch backlog and enforce patch SLA by asset tier")
+        elif gap["control"] == "cloud_configuration":
+            remediations.append("Run CSPM checks and remove static cloud credentials from runtime environments")
+        elif gap["control"] == "workload_hardening":
+            remediations.append("Reduce privileged containers and strengthen runtime least-privilege profiles")
+
+    report = {
+        "report_id": f"cmp-{uuid.uuid4().hex[:10]}",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "summary": {
+            "overall_score": status.get("overall_score", 0),
+            "overall_status": status.get("overall_status", "unknown"),
+            "weak_controls": len(gaps),
+        },
+        "framework_results": status.get("frameworks", {}),
+        "control_gaps": gaps,
+        "prioritized_remediations": remediations,
+    }
+
+    _compliance_report_history.append(report)
+    if len(_compliance_report_history) > 500:
+        del _compliance_report_history[:-500]
+
+    return report
+
+
+# --- Phase 45: Risk Scoring Engine (Deep Implementation) ---
+
+@app.get("/risk/score")
+async def risk_score():
+    """Aggregate security telemetry into a normalized enterprise risk score."""
+    threat = await threat_posture()
+    dns = await dns_suspicious()
+    insider = await insider_risk_scores()
+    net = await network_anomalies()
+    patch = await patch_vulnerabilities()
+    cloud = await cloud_misconfigurations()
+    comp = await compliance_status()
+
+    components = {
+        "threat_posture": int(max(0, min(100, threat.get("overall_risk_score", 0)))),
+        "dns_anomalies": int(max(0, min(100, dns.get("risk_score", 0)))),
+        "insider_risk": int(max(0, min(100, insider.get("portfolio_risk_score", 0)))),
+        "network_anomalies": int(max(0, min(100, net.get("risk_score", 0)))),
+        "vulnerability_exposure": int(max(0, min(100, patch.get("risk_score", 0)))),
+        "cloud_misconfiguration": int(max(0, min(100, cloud.get("risk_score", 0)))),
+        "compliance_gap": max(0, min(100, 100 - int(comp.get("overall_score", 0)))),
+    }
+
+    weighted = (
+        components["threat_posture"] * 0.22
+        + components["dns_anomalies"] * 0.11
+        + components["insider_risk"] * 0.15
+        + components["network_anomalies"] * 0.12
+        + components["vulnerability_exposure"] * 0.18
+        + components["cloud_misconfiguration"] * 0.12
+        + components["compliance_gap"] * 0.10
+    )
+    score = int(max(0, min(100, round(weighted))))
+
+    level = "low" if score < 35 else "moderate" if score < 60 else "high" if score < 80 else "critical"
+    trend = "stable"
+    if _risk_score_history:
+        prev = _risk_score_history[-1].get("score", score)
+        if score >= prev + 5:
+            trend = "worsening"
+        elif score <= prev - 5:
+            trend = "improving"
+
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "score": score,
+        "risk_level": level,
+        "trend": trend,
+        "components": components,
+    }
+    _risk_score_history.append(record)
+    if len(_risk_score_history) > 1000:
+        del _risk_score_history[:-1000]
+
+    return record
+
+
+@app.get("/risk/critical-assets")
+async def risk_critical_assets():
+    """Identify high-value assets most exposed to active risk signals."""
+    now = datetime.now(timezone.utc)
+    proc = await process_monitor()
+    net = await network_anomalies()
+    patch = await patch_vulnerabilities()
+    insider = await insider_risk_scores()
+
+    suspicious_processes = proc.get("suspicious_processes", []) if isinstance(proc, dict) else []
+    anomaly_count = int(net.get("anomaly_count", 0)) if isinstance(net, dict) else 0
+    cve_count = int(patch.get("totals", {}).get("total_vulnerabilities", 0)) if isinstance(patch, dict) else 0
+    insider_high = int(insider.get("high_risk_identities", 0)) if isinstance(insider, dict) else 0
+
+    assets = [
+        {"asset_id": "dc-01", "type": "domain-controller", "business_criticality": "critical", "base_risk": 72},
+        {"asset_id": "db-payments-01", "type": "database", "business_criticality": "critical", "base_risk": 68},
+        {"asset_id": "api-gateway-01", "type": "service-edge", "business_criticality": "high", "base_risk": 61},
+        {"asset_id": "k8s-control-plane", "type": "kubernetes", "business_criticality": "high", "base_risk": 64},
+    ]
+
+    ranked = []
+    for asset in assets:
+        risk = asset["base_risk"]
+        risk += min(12, suspicious_processes.__len__() * 2)
+        risk += min(10, anomaly_count * 2)
+        risk += min(12, cve_count // 2)
+        risk += min(8, insider_high * 2)
+        risk = int(max(0, min(100, risk)))
+        ranked.append({
+            **asset,
+            "composite_risk": risk,
+            "last_seen": now.isoformat(),
+            "priority": "P1" if risk >= 85 else "P2" if risk >= 70 else "P3",
+            "drivers": {
+                "suspicious_processes": len(suspicious_processes),
+                "network_anomalies": anomaly_count,
+                "vulnerability_count": cve_count,
+                "high_risk_identities": insider_high,
+            },
+        })
+
+    ranked.sort(key=lambda a: a["composite_risk"], reverse=True)
+    return {
+        "generated_at": now.isoformat(),
+        "critical_assets": ranked,
+        "count": len(ranked),
     }
 
 

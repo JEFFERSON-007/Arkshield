@@ -85,7 +85,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /containers` + `GET /containers/security` + `POST /containers/scan` (Phase 41): Container runtime inventory and security posture scans.
 - `GET /kubernetes/cluster` + `GET /kubernetes/security` (Phase 42): Kubernetes cluster discovery and workload security posture checks.
 - `GET /cloud/posture` + `GET /cloud/misconfigurations` (Phase 43): Cloud CLI-context posture analysis and misconfiguration detection.
-- Phases 44-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /compliance/status` + `GET /compliance/report` (Phase 44): Framework-aligned compliance posture and remediation-focused report generation.
+- `GET /risk/score` + `GET /risk/critical-assets` (Phase 45): Cross-domain enterprise risk scoring and critical asset prioritization.
+- Phases 46-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

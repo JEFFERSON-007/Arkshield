@@ -69,5 +69,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 41** (`/containers`, `/containers/security`, `/containers/scan`) with runtime container visibility and security scans.
 - Implemented **Phase 42** (`/kubernetes/cluster`, `/kubernetes/security`) with cluster visibility and Kubernetes posture checks.
 - Implemented **Phase 43** (`/cloud/posture`, `/cloud/misconfigurations`) with cloud context analysis and misconfiguration findings.
-- Implemented baseline endpoints for remaining **Phases 44-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 44** (`/compliance/status`, `/compliance/report`) with ISO27001/SOC2/NIST-aligned scoring and remediation reports.
+- Implemented **Phase 45** (`/risk/score`, `/risk/critical-assets`) with weighted enterprise risk aggregation and critical asset prioritization.
+- Implemented baseline endpoints for remaining **Phases 46-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

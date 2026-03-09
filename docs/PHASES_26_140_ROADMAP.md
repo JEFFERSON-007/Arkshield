@@ -135,18 +135,30 @@ Capabilities:
 - Traffic monitoring
 - Abnormal flow detection
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
-
 ### Phase 38 - Insider Threat Detection
+
+Endpoints:
 - `GET /insider/activity`
 - `GET /insider/risk-scores`
 
+Capabilities:
+- Employee behavior analysis
+- Data access monitoring
+
 ### Phase 39 - Patch Intelligence System
+
+Endpoints:
 - `GET /patch/status`
 - `GET /patch/vulnerabilities`
 - `POST /patch/recommendations`
+
+Capabilities:
+- Patch analysis
+- Vulnerability tracking
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
 
 ### Phase 40 - Supply Chain Attack Detection
 - `GET /supply-chain/dependencies`

@@ -79,7 +79,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /security/credential-theft` + `GET /security/auth-anomalies` (Phase 35): Credential theft signal detection and authentication anomaly analytics.
 - `GET /dns/logs` + `GET /dns/suspicious` + `POST /dns/block/{domain}` (Phase 36): DNS monitoring, suspicious-domain detection, and policy-layer blocking.
 - `GET /network/traffic` + `GET /network/anomalies` (Phase 37): Traffic sampling with baseline-driven anomaly detection.
-- Phases 38-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /insider/activity` + `GET /insider/risk-scores` (Phase 38): User-centric behavioral analytics and insider risk scoring.
+- `GET /patch/status` + `GET /patch/vulnerabilities` + `POST /patch/recommendations` (Phase 39): Patch posture analysis, vulnerability signals, and prioritized remediation plans.
+- Phases 40-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

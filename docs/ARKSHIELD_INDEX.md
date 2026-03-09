@@ -63,5 +63,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 35** (`/security/credential-theft`, `/security/auth-anomalies`) with credential theft and auth anomaly detection.
 - Implemented **Phase 36** (`/dns/logs`, `/dns/suspicious`, `/dns/block/{domain}`) with DNS telemetry analysis and policy-layer domain blocking.
 - Implemented **Phase 37** (`/network/traffic`, `/network/anomalies`) with traffic snapshots and anomaly detection against baseline.
-- Implemented baseline endpoints for remaining **Phases 38-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 38** (`/insider/activity`, `/insider/risk-scores`) with insider behavior analytics and per-user risk scoring.
+- Implemented **Phase 39** (`/patch/status`, `/patch/vulnerabilities`, `/patch/recommendations`) with patch intelligence and remediation planning.
+- Implemented baseline endpoints for remaining **Phases 40-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

@@ -44,6 +44,7 @@ _device_history: List[Dict[str, Any]] = []
 _ransomware_simulations: List[Dict[str, Any]] = []
 _dns_blocked_domains: Dict[str, Dict[str, Any]] = {}
 _network_traffic_snapshots: List[Dict[str, Any]] = []
+_patch_recommendation_history: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -4291,6 +4292,284 @@ async def network_anomalies(limit: int = 200):
         },
         "anomalies": anomalies,
     }
+
+
+# --- Phase 38: Insider Threat Detection (Deep Implementation) ---
+
+@app.get("/insider/activity")
+async def insider_activity(
+    window_hours: int = 72,
+    limit: int = 2500,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Analyze user-centric activity patterns to surface insider-risk indicators."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=_safe_limit(window_hours, default=72, minimum=1, maximum=720))
+    events = sentinel.repository.get_recent_events(limit=_safe_limit(limit, default=2500, minimum=100, maximum=10000))
+
+    user_activity: Dict[str, Dict[str, Any]] = {}
+    for evt in events:
+        ts = _parse_iso_datetime(evt.timestamp)
+        if ts and ts < cutoff:
+            continue
+
+        metadata = evt.metadata if isinstance(evt.metadata, dict) else {}
+        user = str(metadata.get("user") or metadata.get("username") or evt.source.hostname or "unknown")
+        entry = user_activity.setdefault(user, {
+            "user": user,
+            "event_count": 0,
+            "threat_events": 0,
+            "avg_risk": 0.0,
+            "high_risk_events": 0,
+            "off_hours_activity": 0,
+            "data_access_events": 0,
+            "privileged_actions": 0,
+            "event_types": Counter(),
+        })
+
+        entry["event_count"] += 1
+        entry["event_types"][evt.event_type] += 1
+        risk = float(evt.risk_score or 0.0)
+        entry["avg_risk"] += risk
+
+        if evt.is_threat:
+            entry["threat_events"] += 1
+        if risk >= 70:
+            entry["high_risk_events"] += 1
+
+        hour = ts.hour if ts else 12
+        if hour < 6 or hour >= 22:
+            entry["off_hours_activity"] += 1
+
+        blob = " ".join([
+            evt.event_class or "",
+            evt.event_type or "",
+            evt.description or "",
+            str(evt.metadata or ""),
+            " ".join(evt.tags or []),
+        ]).lower()
+        if any(token in blob for token in ["download", "copy", "exfil", "sensitive", "confidential"]):
+            entry["data_access_events"] += 1
+        if any(token in blob for token in ["admin", "privilege", "runas", "token", "uac"]):
+            entry["privileged_actions"] += 1
+
+    activity = []
+    for data in user_activity.values():
+        if data["event_count"]:
+            data["avg_risk"] = round(data["avg_risk"] / data["event_count"], 2)
+        data["event_types"] = [
+            {"event_type": k, "count": v}
+            for k, v in data["event_types"].most_common(6)
+        ]
+        activity.append(data)
+
+    activity.sort(key=lambda x: (x["high_risk_events"], x["threat_events"], x["avg_risk"]), reverse=True)
+    return {
+        "window_hours": window_hours,
+        "count": len(activity),
+        "activity": activity[:300],
+    }
+
+
+@app.get("/insider/risk-scores")
+async def insider_risk_scores(
+    window_hours: int = 72,
+    limit: int = 2500,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Compute insider risk scores from user activity features and threat telemetry."""
+    activity_payload = await insider_activity(window_hours=window_hours, limit=limit, sentinel=sentinel)
+    scored = []
+    for item in activity_payload.get("activity", []):
+        score = 0
+        score += min(30, item.get("high_risk_events", 0) * 4)
+        score += min(20, item.get("threat_events", 0) * 3)
+        score += min(15, item.get("off_hours_activity", 0) * 2)
+        score += min(20, item.get("data_access_events", 0) * 3)
+        score += min(15, item.get("privileged_actions", 0) * 2)
+        score += min(10, int(item.get("avg_risk", 0.0) / 10))
+        score = min(100, score)
+
+        level = "critical" if score >= 80 else "high" if score >= 60 else "medium" if score >= 35 else "low"
+        scored.append({
+            "user": item.get("user"),
+            "risk_score": score,
+            "risk_level": level,
+            "signals": {
+                "high_risk_events": item.get("high_risk_events", 0),
+                "threat_events": item.get("threat_events", 0),
+                "off_hours_activity": item.get("off_hours_activity", 0),
+                "data_access_events": item.get("data_access_events", 0),
+                "privileged_actions": item.get("privileged_actions", 0),
+                "avg_risk": item.get("avg_risk", 0.0),
+            },
+        })
+
+    scored.sort(key=lambda x: x["risk_score"], reverse=True)
+    return {
+        "window_hours": window_hours,
+        "count": len(scored),
+        "scores": scored[:300],
+    }
+
+
+# --- Phase 39: Patch Intelligence System (Deep Implementation) ---
+
+@app.get("/patch/status")
+async def patch_status():
+    """Return patch/update posture using OS update metadata and host hygiene signals."""
+    import psutil
+
+    now = datetime.now(timezone.utc)
+    system = platform.system().lower()
+    recommendations = []
+    signals: Dict[str, Any] = {
+        "platform": system,
+        "boot_time": datetime.fromtimestamp(psutil.boot_time(), tz=timezone.utc).isoformat(),
+        "uptime_hours": round((time.time() - psutil.boot_time()) / 3600, 2),
+    }
+
+    if system == "windows":
+        ps_cmd = _resolve_first_command("powershell", "pwsh")
+        if ps_cmd:
+            qfe = _run_cmd([ps_cmd, "-Command", "Get-HotFix | Sort-Object InstalledOn -Descending | Select-Object -First 5 HotFixID, InstalledOn | ConvertTo-Json"], timeout=10)
+            if qfe.get("ok") and qfe.get("stdout"):
+                try:
+                    import json
+                    hotfixes = json.loads(qfe["stdout"])
+                    if not isinstance(hotfixes, list):
+                        hotfixes = [hotfixes]
+                    signals["recent_hotfixes"] = hotfixes
+                except Exception:
+                    signals["recent_hotfixes_raw"] = qfe.get("stdout", "")[:800]
+            else:
+                recommendations.append("Verify Windows Update service and recent hotfix installation")
+        else:
+            recommendations.append("Install/enable PowerShell for richer patch visibility")
+    else:
+        recommendations.append("Integrate distro package manager checks (apt/yum/dnf) for patch recency")
+
+    health_score = 70
+    if signals.get("uptime_hours", 0) > 24 * 30:
+        health_score -= 15
+        recommendations.append("System uptime >30 days; consider maintenance reboot after patch cycle")
+    if "recent_hotfixes" in signals:
+        health_score += 10
+
+    health_score = max(0, min(100, health_score))
+    posture = "good" if health_score >= 80 else "moderate" if health_score >= 60 else "weak"
+
+    return {
+        "timestamp": now.isoformat(),
+        "patch_health_score": health_score,
+        "posture": posture,
+        "signals": signals,
+        "recommendations": recommendations,
+    }
+
+
+@app.get("/patch/vulnerabilities")
+async def patch_vulnerabilities(
+    limit: int = 2000,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Infer patch-related vulnerability exposure from telemetry and host configuration indicators."""
+    events = sentinel.repository.get_recent_events(limit=_safe_limit(limit, default=2000, minimum=100, maximum=10000))
+    findings: List[Dict[str, Any]] = []
+
+    indicators = {
+        "smbv1": ("SMBv1 exposure", 85),
+        "eternalblue": ("Potential SMB exploit vector", 90),
+        "unpatched": ("Unpatched component indicator", 70),
+        "cve-": ("CVE reference in telemetry", 75),
+        "legacy protocol": ("Legacy protocol risk", 60),
+        "vulnerable": ("Explicit vulnerable marker", 65),
+    }
+
+    for evt in events:
+        blob = " ".join([
+            evt.event_type or "",
+            evt.description or "",
+            evt.threat_category or "",
+            str(evt.metadata or ""),
+            " ".join(evt.tags or []),
+        ]).lower()
+
+        hits = []
+        score = 0
+        for token, (title, base_score) in indicators.items():
+            if token in blob:
+                hits.append(title)
+                score = max(score, base_score)
+
+        if not hits:
+            continue
+
+        score = min(100, int(max(score, float(evt.risk_score or 0.0))))
+        findings.append({
+            "event_id": evt.event_id,
+            "timestamp": evt.timestamp,
+            "event_type": evt.event_type,
+            "title": hits[0],
+            "risk_score": score,
+            "indicators": hits,
+            "recommended_patch_action": "Prioritize security patching and validate mitigation controls",
+        })
+
+    findings.sort(key=lambda x: x["risk_score"], reverse=True)
+    return {
+        "count": len(findings),
+        "vulnerabilities": findings[:500],
+    }
+
+
+@app.post("/patch/recommendations")
+async def patch_recommendations(
+    include_reboot_window: bool = True,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Generate prioritized patch recommendations from status and vulnerability signals."""
+    status = await patch_status()
+    vulns = await patch_vulnerabilities(sentinel=sentinel)
+
+    recommendations: List[Dict[str, Any]] = []
+    top_vulns = vulns.get("vulnerabilities", [])[:10]
+    for vuln in top_vulns:
+        recommendations.append({
+            "priority": "critical" if vuln["risk_score"] >= 85 else "high" if vuln["risk_score"] >= 70 else "medium",
+            "title": vuln["title"],
+            "action": "Patch affected component and verify exploit mitigations",
+            "source_event_id": vuln["event_id"],
+        })
+
+    if status.get("posture") in {"weak", "moderate"}:
+        recommendations.append({
+            "priority": "high",
+            "title": "Improve patch cadence",
+            "action": "Increase patch frequency and automate update compliance checks",
+            "source_event_id": "patch-posture",
+        })
+
+    if include_reboot_window:
+        recommendations.append({
+            "priority": "medium",
+            "title": "Plan maintenance reboot",
+            "action": "Schedule reboot windows after patch deployment to finalize updates",
+            "source_event_id": "operational-best-practice",
+        })
+
+    plan = {
+        "id": f"patch-plan-{int(time.time() * 1000)}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "posture": status.get("posture"),
+        "patch_health_score": status.get("patch_health_score"),
+        "recommendation_count": len(recommendations),
+        "recommendations": recommendations,
+    }
+    _patch_recommendation_history.append(plan)
+    if len(_patch_recommendation_history) > 500:
+        del _patch_recommendation_history[:-500]
+
+    return plan
 
 
 # --- Phases 30-140: Expansion Route Registry (Module-Level) ---

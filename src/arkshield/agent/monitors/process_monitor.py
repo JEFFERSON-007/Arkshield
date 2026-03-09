@@ -28,17 +28,32 @@ from arkshield.telemetry.events import (
 
 logger = logging.getLogger("arkshield.monitor.process")
 
-# Suspicious process patterns (LOLBins and common attack tools)
+# Suspicious process patterns (LOLBins and common attack tools - cross-platform)
 SUSPICIOUS_PROCESSES = {
+    # Windows LOLBins
     "powershell.exe", "pwsh.exe", "cmd.exe", "wscript.exe", "cscript.exe",
     "mshta.exe", "regsvr32.exe", "rundll32.exe", "certutil.exe",
     "bitsadmin.exe", "msiexec.exe", "wmic.exe", "installutil.exe",
     "regasm.exe", "msbuild.exe", "cmstp.exe", "msxsl.exe",
-    "forfiles.exe", "pcalua.exe", "bash.exe", "scriptrunner.exe"
+    "forfiles.exe", "pcalua.exe", "bash.exe", "scriptrunner.exe",
+    # Linux LOLBins and suspicious tools
+    "bash", "sh", "dash", "zsh", "ksh", "csh", "tcsh",
+    "python", "python2", "python3", "perl", "ruby", "php",
+    "nc", "netcat", "ncat", "socat", "telnet",
+    "wget", "curl", "lynx", "w3m",
+    "nmap", "masscan", "nikto", "sqlmap",
+    "msfconsole", "metasploit", "msfvenom",
+    "john", "hashcat", "hydra", "medusa",
+    "tcpdump", "wireshark", "tshark",
+    "dd", "shred", "base64", "base32",
+    "openssl", "gpg", "ssh", "sshpass",
+    "docker", "kubectl", "podman",
+    "strace", "ltrace", "gdb", "gdbserver"
 }
 
-# Suspicious parent-child relationships
+# Suspicious parent-child relationships (cross-platform)
 SUSPICIOUS_PARENT_CHILD = {
+    # Windows
     ("winword.exe", "powershell.exe"),
     ("winword.exe", "cmd.exe"),
     ("excel.exe", "powershell.exe"),
@@ -48,10 +63,23 @@ SUSPICIOUS_PARENT_CHILD = {
     ("explorer.exe", "mshta.exe"),
     ("services.exe", "cmd.exe"),
     ("wmiprvse.exe", "powershell.exe"),
+    # Linux
+    ("apache2", "bash"),
+    ("httpd", "bash"),
+    ("nginx", "bash"),
+    ("sshd", "nc"),
+    ("sshd", "netcat"),
+    ("cron", "curl"),
+    ("cron", "wget"),
+    ("systemd", "bash"),
+    ("gnome-shell", "bash"),
+    ("firefox", "bash"),
+    ("chrome", "bash"),
 }
 
-# Suspicious command-line patterns
+# Suspicious command-line patterns (cross-platform)
 SUSPICIOUS_CMD_PATTERNS = [
+    # Windows PowerShell
     "-encodedcommand", "-enc ", "-e ", "hidden",
     "bypass", "downloadstring", "downloadfile", "invoke-expression",
     "iex(", "invoke-webrequest", "net.webclient", "start-bitstransfer",
@@ -62,6 +90,25 @@ SUSPICIOUS_CMD_PATTERNS = [
     "-nop ", "-noni", "-noprofile", "-windowstyle hidden",
     "vssadmin delete", "wbadmin delete", "bcdedit /set",
     "shadowcopy delete", "catalog -quiet",
+    # Linux/Unix shells
+    "bash -i", "sh -i", "/dev/tcp", "/dev/udp",
+    "nc -l", "nc -lvp", "netcat -l",
+    "wget http", "curl http", "curl -o",
+    "chmod +x", "chmod 777",
+    "base64 -d", "echo | base64",
+    "/tmp/.", "cd /tmp", "cd /var/tmp",
+    "nohup ", "disown", "screen -", "tmux ",
+    "python -c", "perl -e", "ruby -e", "php -r",
+    "eval(", "exec(", "system(",
+    "iptables -F", "iptables -X",
+    "useradd", "adduser", "usermod -aG sudo",
+    "passwd ", "chpasswd",
+    "/etc/shadow", "/etc/passwd",
+    "ssh-keygen", "authorized_keys",
+    "crontab -", "at now",
+    "sudo su", "sudo -i", "su -",
+    "docker run", "docker exec",
+    "rev ", "socat ", "reverse shell", "bind shell"
 ]
 
 

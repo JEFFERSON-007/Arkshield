@@ -1036,65 +1036,208 @@ async def lookup_hash(hash_value: str):
 
 @app.get("/system/startup")
 async def get_startup_programs():
-    """Scan all auto-start programs with risk assessment."""
-    import winreg
+    """Scan all auto-start programs with risk assessment (cross-platform)."""
     startup_items = []
-    registry_paths = [
-        (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run"),
-        (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Run"),
-        (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
-        (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
-    ]
-    for hive, path in registry_paths:
+    os_name = platform.system().lower()
+    
+    if os_name == "windows":
         try:
-            key = winreg.OpenKey(hive, path)
-            i = 0
-            while True:
+            import winreg
+            registry_paths = [
+                (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run"),
+                (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\Run"),
+                (winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
+                (winreg.HKEY_LOCAL_MACHINE, r"Software\Microsoft\Windows\CurrentVersion\RunOnce"),
+            ]
+            for hive, path in registry_paths:
                 try:
-                    name, value, _ = winreg.EnumValue(key, i)
-                    risk = 0
-                    val_lower = value.lower()
-                    if any(s in val_lower for s in ['temp', 'appdata', 'wscript', 'mshta', 'powershell']): risk += 40
-                    if any(s in val_lower for s in ['rundll32', 'regsvr32']): risk += 30
-                    if '\\\\' not in val_lower and '/' not in val_lower: risk += 15
-                    hive_name = "HKCU" if hive == winreg.HKEY_CURRENT_USER else "HKLM"
-                    startup_items.append({
-                        "name": name, "command": value, "location": f"{hive_name}\\{path}",
-                        "risk_score": min(risk, 100),
-                        "risk_level": "HIGH" if risk >= 40 else "MEDIUM" if risk >= 20 else "LOW"
-                    })
-                    i += 1
+                    key = winreg.OpenKey(hive, path)
+                    i = 0
+                    while True:
+                        try:
+                            name, value, _ = winreg.EnumValue(key, i)
+                            risk = 0
+                            val_lower = value.lower()
+                            if any(s in val_lower for s in ['temp', 'appdata', 'wscript', 'mshta', 'powershell']): risk += 40
+                            if any(s in val_lower for s in ['rundll32', 'regsvr32']): risk += 30
+                            if '\\\\' not in val_lower and '/' not in val_lower: risk += 15
+                            hive_name = "HKCU" if hive == winreg.HKEY_CURRENT_USER else "HKLM"
+                            startup_items.append({
+                                "name": name, "command": value, "location": f"{hive_name}\\{path}",
+                                "risk_score": min(risk, 100),
+                                "risk_level": "HIGH" if risk >= 40 else "MEDIUM" if risk >= 20 else "LOW"
+                            })
+                            i += 1
+                        except OSError:
+                            break
+                    winreg.CloseKey(key)
                 except OSError:
-                    break
-            winreg.CloseKey(key)
-        except OSError:
-            continue
+                    continue
+        except ImportError:
+            logger.warning("winreg not available on this platform")
+    else:
+        # Linux: Check common autostart locations
+        from pathlib import Path
+        autostart_dirs = [
+            Path.home() / ".config" / "autostart",
+            Path("/etc/xdg/autostart"),
+        ]
+        systemd_user = Path.home() / ".config" / "systemd" / "user"
+        systemd_system = Path("/etc/systemd/system")
+        
+        # Check .desktop files in autostart
+        for autostart_dir in autostart_dirs:
+            if autostart_dir.exists():
+                try:
+                    for desktop_file in autostart_dir.glob("*.desktop"):
+                        try:
+                            content = desktop_file.read_text()
+                            exec_line = next((line for line in content.split('\n') if line.startswith('Exec=')), None)
+                            if exec_line:
+                                command = exec_line.split('=', 1)[1].strip()
+                                risk = 0
+                                cmd_lower = command.lower()
+                                if any(s in cmd_lower for s in ['/tmp', 'curl', 'wget', 'bash -c', 'sh -c']): risk += 40
+                                if any(s in cmd_lower for s in ['python', 'perl', 'ruby']): risk += 20
+                                if cmd_lower.startswith('/'): risk -= 10  # Absolute paths are slightly safer
+                                startup_items.append({
+                                    "name": desktop_file.stem,
+                                    "command": command,
+                                    "location": str(autostart_dir),
+                                    "risk_score": max(0, min(risk, 100)),
+                                    "risk_level": "HIGH" if risk >= 40 else "MEDIUM" if risk >= 20 else "LOW"
+                                })
+                        except Exception as e:
+                            logger.debug(f"Error parsing {desktop_file}: {e}")
+                except Exception as e:
+                    logger.debug(f"Error scanning {autostart_dir}: {e}")
+        
+        # Check systemd user services
+        if systemd_user.exists():
+            try:
+                for service_file in systemd_user.glob("*.service"):
+                    if "default.target.wants" in str(service_file) or "multi-user.target.wants" in str(service_file):
+                        try:
+                            content = service_file.read_text()
+                            exec_line = next((line for line in content.split('\n') if line.strip().startswith('ExecStart=')), None)
+                            if exec_line:
+                                command = exec_line.split('=', 1)[1].strip()
+                                startup_items.append({
+                                    "name": service_file.stem,
+                                    "command": command,
+                                    "location": str(systemd_user),
+                                    "risk_score": 10,
+                                    "risk_level": "LOW"
+                                })
+                        except Exception as e:
+                            logger.debug(f"Error parsing {service_file}: {e}")
+            except Exception as e:
+                logger.debug(f"Error scanning systemd user services: {e}")
+        
+        # Check cron jobs
+        crontab_result = _run_cmd(["crontab", "-l"], timeout=5)
+        if crontab_result["ok"]:
+            for line in crontab_result["stdout"].split('\n'):
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    parts = line.split()
+                    if len(parts) >= 6:
+                        command = ' '.join(parts[5:])
+                        risk = 30 if any(s in command.lower() for s in ['curl', 'wget', '/tmp', 'bash -c']) else 15
+                        startup_items.append({
+                            "name": "cron",
+                            "command": command,
+                            "location": "crontab",
+                            "risk_score": risk,
+                            "risk_level": "MEDIUM" if risk >= 20 else "LOW"
+                        })
+    
     startup_items.sort(key=lambda x: -x['risk_score'])
     return startup_items
 
 @app.get("/system/services")
 async def get_services():
-    """List Windows services with security analysis."""
+    """List system services with security analysis (cross-platform)."""
     import psutil
+    import subprocess
     services = []
-    for svc in psutil.win_service_iter():
+    os_name = platform.system().lower()
+    
+    if os_name == "windows":
         try:
-            info = svc.as_dict()
-            risk = 0
-            name = info.get('name', '').lower()
-            if any(s in name for s in ['remote', 'telnet', 'ftp']): risk += 30
-            if info.get('start_type') == 'automatic' and info.get('status') == 'running': risk += 5
-            services.append({
-                "name": info.get('name', ''),
-                "display_name": info.get('display_name', ''),
-                "status": info.get('status', 'unknown'),
-                "start_type": info.get('start_type', 'unknown'),
-                "pid": info.get('pid', None),
-                "binpath": info.get('binpath', ''),
-                "risk_score": min(risk, 100)
-            })
-        except Exception:
-            continue
+            for svc in psutil.win_service_iter():
+                try:
+                    info = svc.as_dict()
+                    risk = 0
+                    name = info.get('name', '').lower()
+                    if any(s in name for s in ['remote', 'telnet', 'ftp']): risk += 30
+                    if info.get('start_type') == 'automatic' and info.get('status') == 'running': risk += 5
+                    services.append({
+                        "name": info.get('name', ''),
+                        "display_name": info.get('display_name', ''),
+                        "status": info.get('status', 'unknown'),
+                        "start_type": info.get('start_type', 'unknown'),
+                        "pid": info.get('pid', None),
+                        "binpath": info.get('binpath', ''),
+                        "risk_score": min(risk, 100)
+                    })
+                except Exception:
+                    continue
+        except AttributeError:
+            logger.warning("win_service_iter not available on this platform")
+    else:
+        # Linux: Use systemctl to list services
+        try:
+            result = subprocess.run(
+                ['systemctl', 'list-units', '--type=service', '--all', '--no-pager'],
+                capture_output=True, text=True, timeout=10
+            )
+            if result.returncode == 0:
+                for line in result.stdout.split('\n')[1:]:
+                    parts = line.split()
+                    if len(parts) >= 4:
+                        name = parts[0].replace('.service', '')
+                        status = parts[2] if len(parts) > 2 else 'unknown'
+                        enabled = parts[1] if len(parts) > 1 else 'unknown'
+                        
+                        risk = 0
+                        name_lower = name.lower()
+                        if any(s in name_lower for s in ['telnet', 'ftp', 'rsh', 'rlogin']): risk += 40
+                        if any(s in name_lower for s in ['ssh', 'vnc', 'rdp']): risk += 20
+                        if status == 'running' and enabled == 'enabled': risk += 5
+                        
+                        services.append({
+                            "name": name,
+                            "display_name": name,
+                            "status": status,
+                            "start_type": enabled,
+                            "pid": None,
+                            "binpath": "",
+                            "risk_score": min(risk, 100)
+                        })
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            logger.warning(f"Error listing Linux services: {e}")
+            # Fallback: try service command
+            try:
+                result = subprocess.run(['service', '--status-all'], capture_output=True, text=True, timeout=10)
+                for line in result.stdout.split('\n'):
+                    if '[' in line:
+                        status_char = line[line.index('[')+1]
+                        parts = line.split(']', 1)
+                        if len(parts) > 1:
+                            name = parts[1].strip()
+                            services.append({
+                                "name": name,
+                                "display_name": name,
+                                "status": "running" if status_char == '+' else "stopped",
+                                "start_type": "unknown",
+                                "pid": None,
+                                "binpath": "",
+                                "risk_score": 10
+                            })
+            except Exception as e:
+                logger.warning(f"Fallback service listing failed: {e}")
+    
     services.sort(key=lambda x: (-x['risk_score'], x['name']))
     return services[:150]
 
@@ -1325,37 +1468,105 @@ async def get_local_users():
 
 @app.get("/security/firewall")
 async def get_firewall_rules():
-    """Parse Windows firewall rules."""
+    """Parse firewall rules (cross-platform)."""
     import subprocess
     rules: List[Dict[str, Any]] = []
-    try:
-        # For performance, we parse a limited subset or use explicit matching
-        res = subprocess.run(['netsh', 'advfirewall', 'firewall', 'show', 'rule', 'name=all'], capture_output=True, text=True, timeout=10)
-        
-        current_rule: Dict[str, Any] = {}
-        for line in res.stdout.split('\n'):
-            line = line.strip()
-            if not line or line.startswith('-'): continue
+    os_name = platform.system().lower()
+    
+    if os_name == "windows":
+        try:
+            # For performance, we parse a limited subset or use explicit matching
+            res = subprocess.run(['netsh', 'advfirewall', 'firewall', 'show', 'rule', 'name=all'], capture_output=True, text=True, timeout=10)
             
-            if line.startswith("Rule Name:"):
-                if current_rule and 'name' in current_rule:
-                    rules.append(current_rule)
-                    if len(rules) >= 200: break # Limit for dashboard performance
-                current_rule = {"name": line.split(':', 1)[1].strip()}
-            elif line.startswith("Enabled:") and current_rule:
-                current_rule["enabled"] = line.split(':', 1)[1].strip() == "Yes"
-            elif line.startswith("Direction:") and current_rule:
-                current_rule["direction"] = line.split(':', 1)[1].strip()
-            elif line.startswith("Action:") and current_rule:
-                current_rule["action"] = line.split(':', 1)[1].strip()
-            elif line.startswith("Program:") and current_rule:
-                current_rule["program"] = line.split(':', 1)[1].strip()
+            current_rule: Dict[str, Any] = {}
+            for line in res.stdout.split('\n'):
+                line = line.strip()
+                if not line or line.startswith('-'): continue
                 
-        if current_rule and 'name' in current_rule:
-            rules.append(current_rule)
-            
-    except Exception as e:
-        logger.warning("Firewall parsing error: %s", e)
+                if line.startswith("Rule Name:"):
+                    if current_rule and 'name' in current_rule:
+                        rules.append(current_rule)
+                        if len(rules) >= 200: break # Limit for dashboard performance
+                    current_rule = {"name": line.split(':', 1)[1].strip()}
+                elif line.startswith("Enabled:") and current_rule:
+                    current_rule["enabled"] = line.split(':', 1)[1].strip() == "Yes"
+                elif line.startswith("Direction:") and current_rule:
+                    current_rule["direction"] = line.split(':', 1)[1].strip()
+                elif line.startswith("Action:") and current_rule:
+                    current_rule["action"] = line.split(':', 1)[1].strip()
+                elif line.startswith("Program:") and current_rule:
+                    current_rule["program"] = line.split(':', 1)[1].strip()
+                    
+            if current_rule and 'name' in current_rule:
+                rules.append(current_rule)
+                
+        except Exception as e:
+            logger.warning("Windows firewall parsing error: %s", e)
+    else:
+        # Linux: Try iptables, ufw, or firewalld
+        try:
+            # Try ufw first (Ubuntu/Debian)
+            result = subprocess.run(['ufw', 'status', 'numbered'], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0 and 'Status: active' in result.stdout:
+                for line in result.stdout.split('\n'):
+                    if line.strip() and line[0].isdigit():
+                        # Parse UFW rule
+                        parts = line.split(None, 1)
+                        if len(parts) > 1:
+                            rule_text = parts[1].strip()
+                            rules.append({
+                                "name": f"UFW Rule {parts[0]}",
+                                "enabled": True,
+                                "direction": "IN" if "IN" in rule_text.upper() else "OUT" if "OUT" in rule_text.upper() else "BOTH",
+                                "action": "ALLOW" if "ALLOW" in rule_text.upper() else "DENY" if "DENY" in rule_text.upper() else "UNKNOWN",
+                                "program": rule_text
+                            })
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+        
+        try:
+            # Try firewalld (RHEL/CentOS/Fedora)
+            result = subprocess.run(['firewall-cmd', '--list-all'], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                current_zone = "default"
+                for line in result.stdout.split('\n'):
+                    line = line.strip()
+                    if line.endswith(':'):
+                        current_zone = line.rstrip(':')
+                    elif 'services:' in line:
+                        services = line.split(':', 1)[1].strip().split()
+                        for svc in services:
+                            rules.append({
+                                "name": f"firewalld-{svc}",
+                                "enabled": True,
+                                "direction": "IN",
+                                "action": "ALLOW",
+                                "program": f"Service: {svc} in zone {current_zone}"
+                            })
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            pass
+        
+        # Fallback to iptables if nothing else worked
+        if not rules:
+            try:
+                result = subprocess.run(['iptables', '-L', '-n'], capture_output=True, text=True, timeout=5)
+                if result.returncode == 0:
+                    chain = ""
+                    for line in result.stdout.split('\n'):
+                        if line.startswith('Chain'):
+                            chain = line.split()[1]
+                        elif line.strip() and not line.startswith('target') and chain:
+                            parts = line.split()
+                            if len(parts) >= 3:
+                                rules.append({
+                                    "name": f"iptables-{chain}-{len(rules)}",
+                                    "enabled": True,
+                                    "direction": chain,
+                                    "action": parts[0],
+                                    "program": ' '.join(parts[1:])
+                                })
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                logger.warning("No firewall rules could be retrieved on Linux")
 
     return rules
 
@@ -1363,43 +1574,98 @@ async def get_firewall_rules():
 
 @app.get("/security/shares")
 async def get_network_shares():
-    """Enumerate Windows file and print shares."""
+    """Enumerate file and print shares (cross-platform)."""
     import subprocess
     shares = []
-    try:
-        res = subprocess.run(['net', 'share'], capture_output=True, text=True, timeout=5)
-        lines = res.stdout.split('\n')
-        # Skip header lines
-        start_idx = 0
-        for i, line in enumerate(lines):
-            if line.startswith('-'*10):
-                start_idx = i + 1
-                break
-        
-        for line in lines[start_idx:]:
-            if not line.strip() or line.startswith('The command completed successfully'): continue
-            parts = line.split()
-            if len(parts) >= 2:
-                name = parts[0]
-                # net share format: Share name   Resource   Remark
-                # This is a bit tricky to parse perfectly without WMI, but we do our best
-                resource = parts[1] if len(parts) > 1 else ""
-                
-                is_admin = name.endswith('$')
-                risk = 0
-                if is_admin:
-                    risk = 30
-                if name.lower() in ['admin$', 'c$', 'ipc$']:
-                    risk = 50
+    os_name = platform.system().lower()
+    
+    if os_name == "windows":
+        try:
+            res = subprocess.run(['net', 'share'], capture_output=True, text=True, timeout=5)
+            lines = res.stdout.split('\n')
+            # Skip header lines
+            start_idx = 0
+            for i, line in enumerate(lines):
+                if line.startswith('-'*10):
+                    start_idx = i + 1
+                    break
+            
+            for line in lines[start_idx:]:
+                if not line.strip() or line.startswith('The command completed successfully'): continue
+                parts = line.split()
+                if len(parts) >= 2:
+                    name = parts[0]
+                    # net share format: Share name   Resource   Remark
+                    # This is a bit tricky to parse perfectly without WMI, but we do our best
+                    resource = parts[1] if len(parts) > 1 else ""
                     
-                shares.append({
-                    "name": name,
-                    "resource": resource,
-                    "is_admin": is_admin,
-                    "risk_score": risk
-                })
-    except Exception as e:
-        logger.warning("Error getting shares: %s", e)
+                    is_admin = name.endswith('$')
+                    risk = 0
+                    if is_admin:
+                        risk = 30
+                    if name.lower() in ['admin$', 'c$', 'ipc$']:
+                        risk = 50
+                        
+                    shares.append({
+                        "name": name,
+                        "resource": resource,
+                        "is_admin": is_admin,
+                        "risk_score": risk
+                    })
+        except Exception as e:
+            logger.warning("Error getting Windows shares: %s", e)
+    else:
+        # Linux: Check Samba shares and NFS exports
+        try:
+            # Check Samba shares via smbstatus
+            result = subprocess.run(['smbstatus', '-S'], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                for line in result.stdout.split('\n'):
+                    parts = line.split()
+                    if len(parts) >= 2 and not line.startswith('Service') and not line.startswith('-'):
+                        name = parts[0]
+                        shares.append({
+                            "name": name,
+                            "resource": "Samba",
+                            "is_admin": False,
+                            "risk_score": 25,
+                            "type": "samba"
+                        })
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            logger.debug("smbstatus not available")
+        
+        try:
+            # Check NFS exports
+            from pathlib import Path
+            exports_file = Path("/etc/exports")
+            if exports_file.exists():
+                with open(exports_file) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#'):
+                            parts = line.split()
+                            if parts:
+                                path = parts[0]
+                                risk = 20
+                                # Check for insecure options
+                                options = ' '.join(parts[1:]).lower()
+                                if 'rw' in options:
+                                    risk += 20
+                                if 'no_root_squash' in options:
+                                    risk += 30
+                                if '*' in options or '0.0.0.0' in options:
+                                    risk += 25
+                                
+                                shares.append({
+                                    "name": path,
+                                    "resource": "NFS",
+                                    "is_admin": False,
+                                    "risk_score": min(risk, 100),
+                                    "type": "nfs",
+                                    "options": ' '.join(parts[1:])
+                                })
+        except Exception as e:
+            logger.debug(f"Error reading NFS exports: {e}")
     
     shares.sort(key=lambda x: (-x['risk_score'], x['name']))
     return shares

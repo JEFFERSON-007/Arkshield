@@ -53,4 +53,6 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 25** (`POST /threat/auto-prioritize`) for SOC triage queue generation with SLA targets.
 - Implemented **Phase 26** (`/threat-hunt/*`) for advanced hunting, saved queries, and hunt history.
 - Implemented **Phase 27** (`/forensics/*`) for timeline reconstruction, process tree mapping, and file history.
+- Implemented **Phase 28** (`/sandbox/*`) for safe sandbox analysis and behavior reporting.
+- Implemented **Phase 29** (`/ai/malware/*`) for malware family classification and model status tracking.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

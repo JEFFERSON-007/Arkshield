@@ -10,6 +10,7 @@ import time
 import logging
 import platform
 import shutil
+import hashlib
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
@@ -26,6 +27,15 @@ _sentinel: Optional[NexusSentinel] = None
 logger = logging.getLogger("arkshield.api")
 _saved_hunt_queries: List[Dict[str, Any]] = []
 _threat_hunt_history: List[Dict[str, Any]] = []
+_sandbox_reports: Dict[str, Dict[str, Any]] = {}
+_malware_model_state: Dict[str, Any] = {
+    "model_name": "arkshield-heuristic-malware-classifier",
+    "version": "0.1.0",
+    "status": "ready",
+    "last_trained": datetime.now(timezone.utc).isoformat(),
+    "classifications_total": 0,
+    "last_classification": None,
+}
 
 
 def _safe_limit(value: int, default: int, minimum: int = 1, maximum: int = 500) -> int:
@@ -135,6 +145,21 @@ class ThreatHuntSaveRequest(BaseModel):
     query: ThreatHuntQueryRequest
 
 
+class SandboxAnalyzeRequest(BaseModel):
+    file_path: str
+    profile: str = "default"
+
+
+class MalwareClassifyRequest(BaseModel):
+    report_id: str = ""
+    hash_sha256: str = ""
+    file_name: str = ""
+    extension: str = ""
+    entropy: float = 0.0
+    suspicious_strings: List[str] = []
+    observed_behaviors: List[str] = []
+
+
 def _matches_attack_pattern(event: SecurityEvent, pattern: str) -> bool:
     """Lightweight attack pattern matching for hunt queries."""
     pattern = (pattern or "").strip().lower()
@@ -157,6 +182,77 @@ def _matches_attack_pattern(event: SecurityEvent, pattern: str) -> bool:
         return pattern in event_type or pattern in threat_cat or pattern in tags
 
     return event_type in expected or any(token in tags for token in expected)
+
+
+def _sha256_file(file_path: str) -> str:
+    """Generate SHA256 hash for file samples."""
+    digest = hashlib.sha256()
+    with open(file_path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(8192), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _byte_entropy(sample: bytes) -> float:
+    """Approximate Shannon entropy from byte distribution."""
+    if not sample:
+        return 0.0
+
+    freq: Dict[int, int] = {}
+    for value in sample:
+        freq[value] = freq.get(value, 0) + 1
+
+    length = len(sample)
+    entropy = 0.0
+    import math
+    for count in freq.values():
+        probability = count / length
+        entropy -= probability * math.log2(probability)
+
+    return round(entropy, 4)
+
+
+def _extract_behavior_signals(file_name: str, ext: str, content_preview: str) -> Dict[str, Any]:
+    """Infer sandbox behavior signals from static properties and content markers."""
+    lowered_name = (file_name or "").lower()
+    preview = (content_preview or "").lower()
+
+    suspicious_markers = [
+        "powershell",
+        "invoke-expression",
+        "base64",
+        "cmd.exe",
+        "rundll32",
+        "mimikatz",
+        "credential",
+        "reg add",
+        "vssadmin",
+        "shadowcopy",
+        "encrypt",
+        "bitcoin",
+        "wallet",
+        "c2",
+    ]
+    matched_markers = [marker for marker in suspicious_markers if marker in preview or marker in lowered_name]
+
+    behaviors: List[str] = []
+    if ext in {".exe", ".dll", ".bat", ".ps1", ".js", ".vbs", ".scr"}:
+        behaviors.append("process_spawn")
+    if any(x in preview for x in ["reg add", "autorun", "startup"]):
+        behaviors.append("persistence_attempt")
+    if any(x in preview for x in ["http://", "https://", "socket", "dns", "c2"]):
+        behaviors.append("network_beaconing")
+    if any(x in preview for x in ["vssadmin", "encrypt", "ransom", "recover key"]):
+        behaviors.append("ransomware_activity")
+    if any(x in preview for x in ["mimikatz", "lsass", "sekurlsa", "credential"]):
+        behaviors.append("credential_access")
+    if any(x in preview for x in ["powershell", "invoke-expression", "cmd.exe", "rundll32"]):
+        behaviors.append("lolbin_abuse")
+
+    return {
+        "suspicious_strings": matched_markers,
+        "observed_behaviors": sorted(set(behaviors)),
+    }
 
 # --- Routes ---
 
@@ -2967,6 +3063,195 @@ async def forensics_file_history(
         "path": normalized,
         "count": len(matches),
         "history": matches,
+    }
+
+
+# --- Phase 28: Malware Sandbox ---
+
+@app.post("/sandbox/analyze")
+async def sandbox_analyze(request: SandboxAnalyzeRequest):
+    """Analyze suspicious files in a safe, non-executing sandbox profile."""
+    file_path = os.path.abspath(request.file_path or "")
+    if not file_path or not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="file not found")
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=400, detail="file_path must point to a file")
+
+    try:
+        max_preview = 65536
+        with open(file_path, "rb") as handle:
+            preview_bytes = handle.read(max_preview)
+
+        size = os.path.getsize(file_path)
+        _, ext = os.path.splitext(file_path)
+        entropy = _byte_entropy(preview_bytes)
+        sha256 = _sha256_file(file_path)
+
+        try:
+            preview_text = preview_bytes.decode("utf-8", errors="ignore")
+        except Exception:
+            preview_text = ""
+
+        behavior = _extract_behavior_signals(os.path.basename(file_path), ext.lower(), preview_text)
+        suspicious_score = 0
+        suspicious_score += min(40, len(behavior["suspicious_strings"]) * 6)
+        suspicious_score += min(35, len(behavior["observed_behaviors"]) * 8)
+        if entropy >= 7.3:
+            suspicious_score += 15
+        if ext.lower() in {".exe", ".dll", ".scr"}:
+            suspicious_score += 10
+        suspicious_score = max(0, min(100, suspicious_score))
+
+        if suspicious_score >= 75:
+            verdict = "malicious"
+        elif suspicious_score >= 45:
+            verdict = "suspicious"
+        else:
+            verdict = "benign"
+
+        report_id = f"sandbox-{int(time.time() * 1000)}"
+        report = {
+            "id": report_id,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "profile": request.profile,
+            "sample": {
+                "path": file_path,
+                "name": os.path.basename(file_path),
+                "extension": ext.lower(),
+                "size_bytes": size,
+                "sha256": sha256,
+                "entropy": entropy,
+            },
+            "behavior": behavior,
+            "analysis": {
+                "suspicion_score": suspicious_score,
+                "verdict": verdict,
+                "notes": [
+                    "Analysis is non-executing and heuristic-based.",
+                    "Use with live telemetry and threat intel for final decision.",
+                ],
+            },
+        }
+        _sandbox_reports[report_id] = report
+
+        return {
+            "report_id": report_id,
+            "verdict": verdict,
+            "suspicion_score": suspicious_score,
+            "sha256": sha256,
+        }
+    except Exception as exc:
+        logger.error(f"Sandbox analyze failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Sandbox analyze failed: {exc}")
+
+
+@app.get("/sandbox/report/{id}")
+async def sandbox_report(id: str):
+    """Retrieve full sandbox analysis report."""
+    report = _sandbox_reports.get(id)
+    if not report:
+        raise HTTPException(status_code=404, detail="sandbox report not found")
+    return report
+
+
+@app.get("/sandbox/behavior/{id}")
+async def sandbox_behavior(id: str):
+    """Retrieve behavior observations for a sandbox report."""
+    report = _sandbox_reports.get(id)
+    if not report:
+        raise HTTPException(status_code=404, detail="sandbox report not found")
+
+    return {
+        "id": id,
+        "sample": report.get("sample", {}),
+        "behavior": report.get("behavior", {}),
+        "analysis": report.get("analysis", {}),
+    }
+
+
+# --- Phase 29: AI Malware Classification ---
+
+@app.post("/ai/malware/classify")
+async def ai_malware_classify(request: MalwareClassifyRequest):
+    """Classify malware family and confidence using heuristic AI scoring."""
+    sandbox_report = _sandbox_reports.get(request.report_id) if request.report_id else None
+
+    extension = (request.extension or "").lower()
+    if not extension and sandbox_report:
+        extension = sandbox_report.get("sample", {}).get("extension", "")
+
+    entropy = float(request.entropy or 0.0)
+    if entropy <= 0 and sandbox_report:
+        entropy = float(sandbox_report.get("sample", {}).get("entropy", 0.0))
+
+    suspicious_strings = set(s.lower() for s in (request.suspicious_strings or []))
+    observed_behaviors = set(s.lower() for s in (request.observed_behaviors or []))
+    if sandbox_report:
+        suspicious_strings.update(s.lower() for s in sandbox_report.get("behavior", {}).get("suspicious_strings", []))
+        observed_behaviors.update(s.lower() for s in sandbox_report.get("behavior", {}).get("observed_behaviors", []))
+
+    # Heuristic family mapping aligned with observable behavior traits.
+    family_scores = {
+        "ransomware": 0,
+        "trojan": 0,
+        "worm": 0,
+        "spyware": 0,
+        "downloader": 0,
+    }
+
+    if "ransomware_activity" in observed_behaviors or "encrypt" in suspicious_strings:
+        family_scores["ransomware"] += 40
+    if "network_beaconing" in observed_behaviors or "c2" in suspicious_strings:
+        family_scores["trojan"] += 30
+        family_scores["downloader"] += 20
+    if "persistence_attempt" in observed_behaviors:
+        family_scores["trojan"] += 20
+        family_scores["worm"] += 15
+    if "credential_access" in observed_behaviors or "mimikatz" in suspicious_strings:
+        family_scores["spyware"] += 35
+    if "lolbin_abuse" in observed_behaviors:
+        family_scores["trojan"] += 15
+    if extension in {".js", ".vbs", ".ps1", ".bat"}:
+        family_scores["downloader"] += 15
+    if entropy >= 7.2:
+        family_scores["ransomware"] += 10
+        family_scores["trojan"] += 8
+
+    predicted_family = max(family_scores, key=family_scores.get)
+    raw_score = family_scores[predicted_family]
+    confidence = round(max(0.0, min(0.99, raw_score / 100.0 + 0.15)), 2)
+
+    if raw_score >= 45:
+        label = "malicious"
+    elif raw_score >= 25:
+        label = "suspicious"
+    else:
+        label = "unknown"
+
+    _malware_model_state["classifications_total"] += 1
+    _malware_model_state["last_classification"] = datetime.now(timezone.utc).isoformat()
+
+    return {
+        "label": label,
+        "predicted_family": predicted_family,
+        "confidence": confidence,
+        "feature_summary": {
+            "extension": extension,
+            "entropy": entropy,
+            "suspicious_strings_count": len(suspicious_strings),
+            "observed_behaviors_count": len(observed_behaviors),
+            "used_sandbox_report": bool(sandbox_report),
+        },
+        "family_scores": family_scores,
+    }
+
+
+@app.get("/ai/malware/model-status")
+async def ai_malware_model_status():
+    """Return current malware classifier model metadata and usage counters."""
+    return {
+        **_malware_model_state,
+        "sandbox_reports_available": len(_sandbox_reports),
     }
 
 # --- Entry Point ---

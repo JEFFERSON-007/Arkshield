@@ -29,16 +29,29 @@ Capabilities:
 - File modification timeline
 - Process ancestry mapping
 
-## Planned Phases
-
 ### Phase 28 - Malware Sandbox
+
+Endpoints:
 - `POST /sandbox/analyze`
 - `GET /sandbox/report/{id}`
 - `GET /sandbox/behavior/{id}`
 
+Capabilities:
+- Detonate suspicious files (safe non-executing profile)
+- Observe behavior
+- Generate sandbox reports
+
 ### Phase 29 - AI Malware Classification
+
+Endpoints:
 - `POST /ai/malware/classify`
 - `GET /ai/malware/model-status`
+
+Capabilities:
+- ML-style malware classification (heuristic runtime model)
+- Malware family detection
+
+## Planned Phases
 
 ### Phase 30 - Global Threat Intelligence
 - `GET /threat-intel/global`

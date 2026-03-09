@@ -69,6 +69,8 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `POST /threat/auto-prioritize` (Phase 25): Produces an SLA-ready priority queue for alerts using risk, severity, status, and age.
 - `POST /threat-hunt/query` + related endpoints (Phase 26): Analyst-driven hunting with advanced filtering and saved query workflows.
 - `GET /forensics/timeline` + related endpoints (Phase 27): Attack timeline reconstruction, process ancestry, and file history.
+- `POST /sandbox/analyze` + related endpoints (Phase 28): Safe, non-executing malware sandbox with behavior-oriented reporting.
+- `POST /ai/malware/classify` + `GET /ai/malware/model-status` (Phase 29): Heuristic malware family classification and model runtime health.
 
 ## Documentation
 

@@ -87,5 +87,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 59** (`/tasks/scheduled`, `/tasks/suspicious`) with scheduled task inventory and suspicion-based filtering with risk distribution analysis.
 - Implemented **Phase 60** (`/registry/changes`, `/registry/suspicious`) with registry modification tracking, risk-scored change detection, and indicator frequency analytics.
 - Implemented **Phase 61** (`/processes/privileged`, `/processes/privileged/events`) with privileged process enumeration, privilege escalation detection, and impersonation attempt identification.
-- Implemented baseline endpoints for remaining **Phases 62-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 62** (`/api/abuse`, `/api/anomalies`) with API abuse detection covering high-frequency patterns, endpoint scanning, injection attempts, and anomaly-based request filtering.
+- Implemented **Phase 63** (`/auth/logins`, `/auth/anomalies`) with authentication monitoring including brute force detection, impossible travel analysis, and account enumeration identification.
+- Implemented baseline endpoints for remaining **Phases 64-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

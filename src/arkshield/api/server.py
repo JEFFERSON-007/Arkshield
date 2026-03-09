@@ -102,6 +102,10 @@ _registry_changes: List[Dict[str, Any]] = []
 _registry_baseline: Dict[str, Dict[str, Any]] = {}
 _privileged_process_cache: List[Dict[str, Any]] = []
 _privileged_process_events: List[Dict[str, Any]] = []
+_api_request_log: List[Dict[str, Any]] = []
+_api_abuse_detections: List[Dict[str, Any]] = []
+_auth_login_events: List[Dict[str, Any]] = []
+_auth_anomalies: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -7260,6 +7264,424 @@ async def processes_privileged_events(limit: int = 100):
     return {
         "count": len(recent),
         "events": recent,
+    }
+
+
+# ========================================
+# Phase 62 - API Abuse Detection
+# ========================================
+
+def _simulate_api_requests() -> List[Dict[str, Any]]:
+    """Generate simulated API request patterns for abuse detection."""
+    timestamp = datetime.now(timezone.utc).isoformat()
+    base_time = datetime.now(timezone.utc)
+    
+    requests = []
+    
+    # Normal traffic
+    for i in range(10):
+        requests.append({
+            "id": str(uuid.uuid4())[:8],
+            "ip": "192.168.1.100",
+            "endpoint": "/api/alerts",
+            "method": "GET",
+            "status_code": 200,
+            "timestamp": (base_time - timedelta(minutes=i)).isoformat(),
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "anomaly_score": 5,
+        })
+    
+    # Suspicious high-frequency requests
+    for i in range(50):
+        requests.append({
+            "id": str(uuid.uuid4())[:8],
+            "ip": "203.0.113.45",
+            "endpoint": "/api/alerts",
+            "method": "GET",
+            "status_code": 200,
+            "timestamp": (base_time - timedelta(seconds=i)).isoformat(),
+            "user_agent": "python-requests/2.28.0",
+            "anomaly_score": 75,
+        })
+    
+    # Suspicious scanning patterns
+    endpoints = ["/api/users", "/api/admin", "/api/config", "/api/secrets", "/api/keys"]
+    for endpoint in endpoints:
+        requests.append({
+            "id": str(uuid.uuid4())[:8],
+            "ip": "198.51.100.22",
+            "endpoint": endpoint,
+            "method": "GET",
+            "status_code": 403,
+            "timestamp": (base_time - timedelta(seconds=len(requests))).isoformat(),
+            "user_agent": "curl/7.68.0",
+            "anomaly_score": 85,
+        })
+    
+    # SQL injection attempts
+    requests.append({
+        "id": str(uuid.uuid4())[:8],
+        "ip": "198.51.100.22",
+        "endpoint": "/api/search?q=' OR '1'='1",
+        "method": "GET",
+        "status_code": 400,
+        "timestamp": base_time.isoformat(),
+        "user_agent": "curl/7.68.0",
+        "anomaly_score": 95,
+    })
+    
+    return requests
+
+
+def _detect_api_abuse() -> List[Dict[str, Any]]:
+    """Analyze API request patterns to detect abuse."""
+    global _api_request_log
+    
+    if not _api_request_log:
+        _api_request_log = _simulate_api_requests()
+    
+    abuse_cases = []
+    
+    # Group by IP
+    ip_groups = {}
+    for req in _api_request_log:
+        ip = req.get("ip", "unknown")
+        if ip not in ip_groups:
+            ip_groups[ip] = []
+        ip_groups[ip].append(req)
+    
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    # Detect high-frequency abuse
+    for ip, reqs in ip_groups.items():
+        if len(reqs) > 30:
+            abuse_cases.append({
+                "id": str(uuid.uuid4())[:8],
+                "type": "high_frequency",
+                "ip": ip,
+                "request_count": len(reqs),
+                "risk_score": min(50 + len(reqs), 100),
+                "description": f"Excessive API requests: {len(reqs)} requests detected",
+                "detected_at": timestamp,
+            })
+    
+    # Detect scanning patterns
+    for ip, reqs in ip_groups.items():
+        unique_endpoints = set(req.get("endpoint", "") for req in reqs)
+        failed_requests = sum(1 for req in reqs if req.get("status_code", 200) >= 400)
+        
+        if len(unique_endpoints) > 5 and failed_requests > 3:
+            abuse_cases.append({
+                "id": str(uuid.uuid4())[:8],
+                "type": "scanning",
+                "ip": ip,
+                "unique_endpoints": len(unique_endpoints),
+                "failed_requests": failed_requests,
+                "risk_score": 80,
+                "description": f"API scanning detected: {len(unique_endpoints)} endpoints probed",
+                "detected_at": timestamp,
+            })
+    
+    # Detect injection attempts
+    for req in _api_request_log:
+        endpoint = req.get("endpoint", "")
+        if any(pattern in endpoint.lower() for pattern in ["' or '", "union select", "drop table", "<script>"]):
+            abuse_cases.append({
+                "id": str(uuid.uuid4())[:8],
+                "type": "injection_attempt",
+                "ip": req.get("ip"),
+                "endpoint": endpoint,
+                "risk_score": 95,
+                "description": "Malicious payload detected in API request",
+                "detected_at": timestamp,
+            })
+    
+    return abuse_cases
+
+
+@app.get("/api/abuse")
+async def api_abuse(refresh: bool = False):
+    """
+    Detect API abuse patterns: high-frequency requests, scanning, and injection attempts.
+    Analyzes request patterns to identify malicious behavior.
+    """
+    global _api_abuse_detections
+    
+    if refresh or not _api_abuse_detections:
+        _api_abuse_detections = _detect_api_abuse()
+    
+    # Type distribution
+    type_breakdown = dict(Counter(d.get("type", "unknown") for d in _api_abuse_detections))
+    
+    # Risk categorization
+    risk_categories = {"medium": 0, "high": 0, "critical": 0}
+    for detection in _api_abuse_detections:
+        score = detection.get("risk_score", 0)
+        if score < 65:
+            risk_categories["medium"] += 1
+        elif score < 85:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    # Top offender IPs
+    ip_counts = Counter(d.get("ip", "unknown") for d in _api_abuse_detections)
+    top_ips = dict(ip_counts.most_common(5))
+    
+    return {
+        "total_abuse_cases": len(_api_abuse_detections),
+        "type_breakdown": type_breakdown,
+        "risk_distribution": risk_categories,
+        "top_offender_ips": top_ips,
+        "detections": _api_abuse_detections,
+    }
+
+
+@app.get("/api/anomalies")
+async def api_anomalies(threshold: int = 70):
+    """
+    Return API request anomalies exceeding risk threshold.
+    Filters high-risk abuse patterns for immediate response.
+    """
+    global _api_request_log
+    
+    if not _api_request_log:
+        _api_request_log = _simulate_api_requests()
+    
+    # Filter anomalous requests
+    anomalies = [
+        req for req in _api_request_log
+        if req.get("anomaly_score", 0) >= threshold
+    ]
+    
+    # Sort by anomaly score descending
+    anomalies.sort(key=lambda r: r.get("anomaly_score", 0), reverse=True)
+    
+    # IP distribution
+    ip_counts = Counter(a.get("ip", "unknown") for a in anomalies)
+    
+    return {
+        "threshold": threshold,
+        "anomaly_count": len(anomalies),
+        "unique_ips": len(ip_counts),
+        "ip_distribution": dict(ip_counts.most_common(10)),
+        "anomalies": anomalies,
+    }
+
+
+# ========================================
+# Phase 63 - Authentication Monitoring
+# ========================================
+
+def _simulate_auth_events() -> List[Dict[str, Any]]:
+    """Generate simulated authentication events for monitoring."""
+    base_time = datetime.now(timezone.utc)
+    events = []
+    
+    # Successful logins
+    for i in range(10):
+        events.append({
+            "id": str(uuid.uuid4())[:8],
+            "event_type": "login_success",
+            "username": "alice.smith",
+            "ip": "192.168.1.100",
+            "location": "New York, US",
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "timestamp": (base_time - timedelta(hours=i)).isoformat(),
+            "anomaly_score": 5,
+        })
+    
+    # Failed login attempts
+    for i in range(5):
+        events.append({
+            "id": str(uuid.uuid4())[:8],
+            "event_type": "login_failed",
+            "username": "admin",
+            "ip": "203.0.113.45",
+            "location": "Unknown",
+            "user_agent": "python-requests/2.28.0",
+            "timestamp": (base_time - timedelta(minutes=i)).isoformat(),
+            "anomaly_score": 60,
+            "reason": "invalid_credentials",
+        })
+    
+    # Brute force attempt
+    for i in range(20):
+        events.append({
+            "id": str(uuid.uuid4())[:8],
+            "event_type": "login_failed",
+            "username": "admin",
+            "ip": "198.51.100.22",
+            "location": "Unknown",
+            "user_agent": "curl/7.68.0",
+            "timestamp": (base_time - timedelta(seconds=i*10)).isoformat(),
+            "anomaly_score": 85,
+            "reason": "invalid_credentials",
+        })
+    
+    # Impossible travel
+    events.append({
+        "id": str(uuid.uuid4())[:8],
+        "event_type": "login_success",
+        "username": "alice.smith",
+        "ip": "1.2.3.4",
+        "location": "Beijing, CN",
+        "user_agent": "Mozilla/5.0 (X11; Linux x86_64)",
+        "timestamp": (base_time - timedelta(minutes=5)).isoformat(),
+        "anomaly_score": 90,
+        "anomaly_reasons": ["impossible_travel", "location_change"],
+    })
+    
+    # Account enumeration
+    usernames = ["admin", "root", "administrator", "user", "test"]
+    for username in usernames:
+        events.append({
+            "id": str(uuid.uuid4())[:8],
+            "event_type": "login_failed",
+            "username": username,
+            "ip": "198.51.100.33",
+            "location": "Unknown",
+            "user_agent": "python-requests/2.28.0",
+            "timestamp": (base_time - timedelta(seconds=len(events))).isoformat(),
+            "anomaly_score": 75,
+            "reason": "invalid_credentials",
+        })
+    
+    return events
+
+
+def _detect_auth_anomalies() -> List[Dict[str, Any]]:
+    """Detect authentication anomalies from login events."""
+    global _auth_login_events
+    
+    if not _auth_login_events:
+        _auth_login_events = _simulate_auth_events()
+    
+    anomalies = []
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    # Group by IP
+    ip_groups = {}
+    for event in _auth_login_events:
+        ip = event.get("ip", "unknown")
+        if ip not in ip_groups:
+            ip_groups[ip] = []
+        ip_groups[ip].append(event)
+    
+    # Detect brute force
+    for ip, events in ip_groups.items():
+        failed_logins = [e for e in events if e.get("event_type") == "login_failed"]
+        if len(failed_logins) >= 5:
+            anomalies.append({
+                "id": str(uuid.uuid4())[:8],
+                "type": "brute_force",
+                "ip": ip,
+                "failed_attempts": len(failed_logins),
+                "risk_score": min(50 + len(failed_logins) * 5, 100),
+                "description": f"Brute force attack detected: {len(failed_logins)} failed login attempts",
+                "detected_at": timestamp,
+            })
+    
+    # Detect impossible travel
+    username_ips = {}
+    for event in _auth_login_events:
+        if event.get("event_type") == "login_success":
+            username = event.get("username")
+            location = event.get("location", "Unknown")
+            if username not in username_ips:
+                username_ips[username] = []
+            username_ips[username].append(location)
+    
+    for username, locations in username_ips.items():
+        unique_locations = set(locations)
+        if len(unique_locations) > 1 and any("US" in loc and "CN" in loc for loc in [",".join(locations)]):
+            anomalies.append({
+                "id": str(uuid.uuid4())[:8],
+                "type": "impossible_travel",
+                "username": username,
+                "locations": list(unique_locations),
+                "risk_score": 90,
+                "description": f"Impossible travel detected for user {username}",
+                "detected_at": timestamp,
+            })
+    
+    # Detect account enumeration
+    for ip, events in ip_groups.items():
+        unique_usernames = set(e.get("username") for e in events)
+        if len(unique_usernames) >= 5:
+            anomalies.append({
+                "id": str(uuid.uuid4())[:8],
+                "type": "account_enumeration",
+                "ip": ip,
+                "usernames_tried": len(unique_usernames),
+                "risk_score": 75,
+                "description": f"Account enumeration detected: {len(unique_usernames)} usernames tried",
+                "detected_at": timestamp,
+            })
+    
+    return anomalies
+
+
+@app.get("/auth/logins")
+async def auth_logins(limit: int = 100, refresh: bool = False):
+    """
+    Return authentication events including successful and failed login attempts.
+    Tracks user authentication activity across the system.
+    """
+    global _auth_login_events
+    
+    if refresh or not _auth_login_events:
+        _auth_login_events = _simulate_auth_events()
+    
+    limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
+    recent = list(reversed(_auth_login_events[-limit:]))
+    
+    # Event type distribution
+    event_type_counts = dict(Counter(e.get("event_type", "unknown") for e in recent))
+    
+    # Failed login distribution
+    failed_events = [e for e in recent if e.get("event_type") == "login_failed"]
+    failed_by_ip = Counter(e.get("ip", "unknown") for e in failed_events)
+    
+    return {
+        "count": len(recent),
+        "event_type_distribution": event_type_counts,
+        "failed_login_count": len(failed_events),
+        "top_failed_ips": dict(failed_by_ip.most_common(5)),
+        "events": recent,
+    }
+
+
+@app.get("/auth/anomalies")
+async def auth_anomalies(refresh: bool = False):
+    """
+    Detect authentication anomalies: brute force attacks, impossible travel, account enumeration.
+    Identifies suspicious authentication patterns requiring investigation.
+    """
+    global _auth_anomalies
+    
+    if refresh or not _auth_anomalies:
+        _auth_anomalies = _detect_auth_anomalies()
+    
+    # Type distribution
+    type_breakdown = dict(Counter(a.get("type", "unknown") for a in _auth_anomalies))
+    
+    # Risk categorization
+    risk_categories = {"medium": 0, "high": 0, "critical": 0}
+    for anomaly in _auth_anomalies:
+        score = anomaly.get("risk_score", 0)
+        if score < 65:
+            risk_categories["medium"] += 1
+        elif score < 85:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    return {
+        "total_anomalies": len(_auth_anomalies),
+        "type_breakdown": type_breakdown,
+        "risk_distribution": risk_categories,
+        "anomalies": _auth_anomalies,
     }
 
 

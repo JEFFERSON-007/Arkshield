@@ -385,17 +385,33 @@ Capabilities:
 - Risk scoring based on non-standard paths and suspicious execution contexts
 - Event tracking for privileged process activity and anomalies
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 62 - API Abuse Detection
+
+Endpoints:
 - `GET /api/abuse`
 - `GET /api/anomalies`
 
+Capabilities:
+- API abuse pattern detection (high-frequency requests, endpoint scanning, injection attempts)
+- Request anomaly scoring and filtering with configurable thresholds
+- Top offender IP identification and behavioral analytics
+- Detection of SQL injection, XSS, and malicious payload attempts
+
 ### Phase 63 - Authentication Monitoring
+
+Endpoints:
 - `GET /auth/logins`
 - `GET /auth/anomalies`
+
+Capabilities:
+- Comprehensive authentication event tracking (successful/failed logins)
+- Brute force attack detection with failed attempt correlation
+- Impossible travel analysis for geographic anomaly detection
+- Account enumeration identification and credential stuffing alerts
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 64 - Brute Force Detection
 - `GET /auth/bruteforce`

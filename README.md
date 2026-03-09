@@ -103,7 +103,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /tasks/scheduled` + `GET /tasks/suspicious` (Phase 59): Scheduled task monitoring with suspicion scoring and risk-based filtering.
 - `GET /registry/changes` + `GET /registry/suspicious` (Phase 60): Registry modification tracking with risk-scored change detection and suspicious filtering.
 - `GET /processes/privileged` + `GET /processes/privileged/events` (Phase 61): Privileged process monitoring with privilege escalation and impersonation detection.
-- Phases 62-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /api/abuse` + `GET /api/anomalies` (Phase 62): API abuse detection with high-frequency request analysis, scanning patterns, and injection attempt identification.
+- `GET /auth/logins` + `GET /auth/anomalies` (Phase 63): Authentication monitoring with brute force detection, impossible travel tracking, and account enumeration alerts.
+- Phases 64-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

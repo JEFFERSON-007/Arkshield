@@ -215,18 +215,30 @@ Capabilities:
 - Cross-domain weighted enterprise risk scoring
 - Critical asset prioritization with risk driver context
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 46 - Security Policy Engine
+
+Endpoints:
 - `GET /policy`
 - `POST /policy/apply`
 - `GET /policy/violations`
 
+Capabilities:
+- Dynamic policy mode and enforcement configuration
+- Telemetry-derived policy violation detection and logging
+
 ### Phase 47 - Automated Playbooks
+
+Endpoints:
 - `GET /playbooks`
 - `POST /playbooks/run`
+
+Capabilities:
+- Response playbook cataloging
+- Simulated run timelines with policy-aware outcomes
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 48 - Digital Twin Security Model
 - `GET /system/digital-twin`

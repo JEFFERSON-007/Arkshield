@@ -71,5 +71,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 43** (`/cloud/posture`, `/cloud/misconfigurations`) with cloud context analysis and misconfiguration findings.
 - Implemented **Phase 44** (`/compliance/status`, `/compliance/report`) with ISO27001/SOC2/NIST-aligned scoring and remediation reports.
 - Implemented **Phase 45** (`/risk/score`, `/risk/critical-assets`) with weighted enterprise risk aggregation and critical asset prioritization.
-- Implemented baseline endpoints for remaining **Phases 46-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 46** (`/policy`, `/policy/apply`, `/policy/violations`) with policy state management and telemetry-driven violation detection.
+- Implemented **Phase 47** (`/playbooks`, `/playbooks/run`) with automated playbook catalog and simulated response execution.
+- Implemented baseline endpoints for remaining **Phases 48-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

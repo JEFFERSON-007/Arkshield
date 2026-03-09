@@ -49,6 +49,19 @@ _container_scan_history: List[Dict[str, Any]] = []
 _cloud_posture_history: List[Dict[str, Any]] = []
 _compliance_report_history: List[Dict[str, Any]] = []
 _risk_score_history: List[Dict[str, Any]] = []
+_policy_state: Dict[str, Any] = {
+    "mode": "monitor",
+    "enforcement": {
+        "block_suspicious_dns": True,
+        "block_untrusted_usb": False,
+        "isolate_high_risk_hosts": False,
+        "require_patch_compliance": True,
+    },
+    "version": 1,
+    "last_updated": datetime.now(timezone.utc).isoformat(),
+}
+_policy_violation_log: List[Dict[str, Any]] = []
+_playbook_run_history: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -5271,6 +5284,227 @@ async def risk_critical_assets():
         "critical_assets": ranked,
         "count": len(ranked),
     }
+
+
+# --- Phase 46: Security Policy Engine (Deep Implementation) ---
+
+@app.get("/policy")
+async def policy_get():
+    """Return active security policy configuration and current enforcement posture."""
+    violations = await policy_violations()
+    snapshot = dict(_policy_state)
+    snapshot["violation_summary"] = {
+        "total": violations.get("count", 0),
+        "high": violations.get("severity_breakdown", {}).get("high", 0),
+        "medium": violations.get("severity_breakdown", {}).get("medium", 0),
+    }
+    return snapshot
+
+
+@app.post("/policy/apply")
+async def policy_apply(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Apply policy updates and return resulting policy snapshot."""
+    mode = str(payload.get("mode", _policy_state.get("mode", "monitor"))).strip().lower()
+    if mode not in {"monitor", "enforce"}:
+        mode = "monitor"
+
+    incoming = payload.get("enforcement", {})
+    if not isinstance(incoming, dict):
+        incoming = {}
+
+    for key in list(_policy_state.get("enforcement", {}).keys()):
+        if key in incoming:
+            _policy_state["enforcement"][key] = bool(incoming[key])
+
+    _policy_state["mode"] = mode
+    _policy_state["version"] = int(_policy_state.get("version", 1)) + 1
+    _policy_state["last_updated"] = datetime.now(timezone.utc).isoformat()
+
+    if mode == "enforce":
+        violations = await policy_violations()
+        if violations.get("severity_breakdown", {}).get("high", 0) > 0:
+            _policy_violation_log.append({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "severity": "high",
+                "type": "policy-enforcement-warning",
+                "message": "Policy switched to enforce mode while high-severity violations exist",
+                "details": {
+                    "high_violation_count": violations.get("severity_breakdown", {}).get("high", 0)
+                },
+            })
+            if len(_policy_violation_log) > 2000:
+                del _policy_violation_log[:-2000]
+
+    return {
+        "status": "applied",
+        "policy": _policy_state,
+    }
+
+
+@app.get("/policy/violations")
+async def policy_violations():
+    """Compute policy violations from current telemetry signals and recent events."""
+    dns = await dns_suspicious()
+    patch = await patch_status()
+    insider = await insider_risk_scores()
+    compliance = await compliance_status()
+
+    violations: List[Dict[str, Any]] = []
+
+    if int(dns.get("risk_score", 0)) >= 60:
+        violations.append({
+            "severity": "high",
+            "category": "network",
+            "policy": "block_suspicious_dns",
+            "message": "High DNS anomaly risk exceeds policy threshold",
+            "evidence": {"dns_risk_score": dns.get("risk_score", 0)},
+        })
+
+    if int(patch.get("compliance_score", 0)) < 70 and _policy_state.get("enforcement", {}).get("require_patch_compliance", False):
+        violations.append({
+            "severity": "medium",
+            "category": "vulnerability",
+            "policy": "require_patch_compliance",
+            "message": "Patch compliance below minimum policy threshold",
+            "evidence": {
+                "patch_compliance": patch.get("compliance_score", 0),
+                "missing_critical": patch.get("totals", {}).get("missing_critical", 0),
+            },
+        })
+
+    if int(insider.get("portfolio_risk_score", 0)) >= 65:
+        violations.append({
+            "severity": "high",
+            "category": "identity",
+            "policy": "isolate_high_risk_hosts",
+            "message": "Insider risk portfolio score indicates elevated identity abuse risk",
+            "evidence": {
+                "portfolio_risk_score": insider.get("portfolio_risk_score", 0),
+                "high_risk_identities": insider.get("high_risk_identities", 0),
+            },
+        })
+
+    if int(compliance.get("overall_score", 0)) < 60:
+        violations.append({
+            "severity": "medium",
+            "category": "governance",
+            "policy": "compliance_floor",
+            "message": "Compliance posture below governance floor",
+            "evidence": {"overall_score": compliance.get("overall_score", 0)},
+        })
+
+    now = datetime.now(timezone.utc).isoformat()
+    for item in violations:
+        log_item = {
+            "timestamp": now,
+            "severity": item["severity"],
+            "type": "policy-violation",
+            "message": item["message"],
+            "details": item,
+        }
+        if not _policy_violation_log or _policy_violation_log[-1].get("message") != log_item["message"]:
+            _policy_violation_log.append(log_item)
+
+    if len(_policy_violation_log) > 2000:
+        del _policy_violation_log[:-2000]
+
+    severity_breakdown = dict(Counter(v["severity"] for v in violations))
+    return {
+        "timestamp": now,
+        "count": len(violations),
+        "severity_breakdown": {
+            "high": int(severity_breakdown.get("high", 0)),
+            "medium": int(severity_breakdown.get("medium", 0)),
+            "low": int(severity_breakdown.get("low", 0)),
+        },
+        "violations": violations,
+        "recent_log_entries": _policy_violation_log[-20:],
+    }
+
+
+# --- Phase 47: Automated Playbooks (Deep Implementation) ---
+
+@app.get("/playbooks")
+async def playbooks_list():
+    """List available automated response playbooks and their prerequisites."""
+    catalog = [
+        {
+            "id": "pb-dns-containment",
+            "name": "DNS Containment",
+            "triggers": ["high dns risk", "c2 domain suspicion"],
+            "actions": ["block domain", "tag endpoint", "open incident"],
+        },
+        {
+            "id": "pb-credential-lockdown",
+            "name": "Credential Theft Lockdown",
+            "triggers": ["credential theft signal", "auth anomalies"],
+            "actions": ["disable account", "force password reset", "invalidate tokens"],
+        },
+        {
+            "id": "pb-ransomware-first-response",
+            "name": "Ransomware First Response",
+            "triggers": ["mass encryption behavior", "extension spike"],
+            "actions": ["isolate host", "snapshot evidence", "notify SOC"],
+        },
+    ]
+    return {
+        "count": len(catalog),
+        "policy_mode": _policy_state.get("mode", "monitor"),
+        "playbooks": catalog,
+    }
+
+
+@app.post("/playbooks/run")
+async def playbooks_run(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Execute a simulated playbook run and return an action timeline."""
+    requested_id = str(payload.get("playbook_id", "")).strip()
+    if not requested_id:
+        raise HTTPException(status_code=400, detail="playbook_id is required")
+
+    available = await playbooks_list()
+    chosen = next((p for p in available.get("playbooks", []) if p.get("id") == requested_id), None)
+    if not chosen:
+        raise HTTPException(status_code=404, detail=f"unknown playbook_id: {requested_id}")
+
+    started = datetime.now(timezone.utc)
+    mode = _policy_state.get("mode", "monitor")
+    enforcement = _policy_state.get("enforcement", {})
+
+    timeline = []
+    for idx, action in enumerate(chosen.get("actions", []), start=1):
+        timeline.append({
+            "step": idx,
+            "action": action,
+            "status": "simulated-executed" if mode == "enforce" else "simulated-planned",
+            "timestamp": (started + timedelta(seconds=idx)).isoformat(),
+        })
+
+    if requested_id == "pb-dns-containment" and not enforcement.get("block_suspicious_dns", False):
+        timeline.append({
+            "step": len(timeline) + 1,
+            "action": "policy check: DNS block disabled",
+            "status": "skipped-by-policy",
+            "timestamp": (started + timedelta(seconds=len(timeline) + 1)).isoformat(),
+        })
+
+    run = {
+        "run_id": f"pbr-{uuid.uuid4().hex[:10]}",
+        "playbook_id": requested_id,
+        "playbook_name": chosen.get("name"),
+        "mode": mode,
+        "requested_by": str(payload.get("requested_by", "system")),
+        "input_context": payload.get("context", {}),
+        "started_at": started.isoformat(),
+        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "timeline": timeline,
+        "outcome": "contained" if mode == "enforce" else "recommendations-generated",
+    }
+
+    _playbook_run_history.append(run)
+    if len(_playbook_run_history) > 1000:
+        del _playbook_run_history[:-1000]
+
+    return run
 
 
 # --- Phases 30-140: Expansion Route Registry (Module-Level) ---

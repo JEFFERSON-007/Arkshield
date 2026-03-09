@@ -51,3 +51,6 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 ### Runtime Progress
 - Implemented API phases now include **Phase 24** (`GET /threat/posture`) for live threat posture scoring and prioritization.
 - Implemented **Phase 25** (`POST /threat/auto-prioritize`) for SOC triage queue generation with SLA targets.
+- Implemented **Phase 26** (`/threat-hunt/*`) for advanced hunting, saved queries, and hunt history.
+- Implemented **Phase 27** (`/forensics/*`) for timeline reconstruction, process tree mapping, and file history.
+- Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

@@ -24,6 +24,8 @@ from arkshield.telemetry.events import SecurityEvent, Alert
 # For simplicity in this implementation, we'll use a globally initialized Sentinel instance
 _sentinel: Optional[NexusSentinel] = None
 logger = logging.getLogger("arkshield.api")
+_saved_hunt_queries: List[Dict[str, Any]] = []
+_threat_hunt_history: List[Dict[str, Any]] = []
 
 
 def _safe_limit(value: int, default: int, minimum: int = 1, maximum: int = 500) -> int:
@@ -112,6 +114,49 @@ class AutoPrioritizeRequest(BaseModel):
     alert_limit: int = 200
     include_resolved: bool = False
     max_results: int = 100
+
+
+class ThreatHuntQueryRequest(BaseModel):
+    query: str = ""
+    event_class: str = ""
+    event_type: str = ""
+    min_risk_score: float = 0.0
+    max_risk_score: float = 100.0
+    min_anomaly_score: float = 0.0
+    is_threat: Optional[bool] = None
+    tags: List[str] = []
+    attack_pattern: str = ""
+    limit: int = 200
+
+
+class ThreatHuntSaveRequest(BaseModel):
+    name: str
+    description: str = ""
+    query: ThreatHuntQueryRequest
+
+
+def _matches_attack_pattern(event: SecurityEvent, pattern: str) -> bool:
+    """Lightweight attack pattern matching for hunt queries."""
+    pattern = (pattern or "").strip().lower()
+    if not pattern:
+        return True
+
+    event_type = (event.event_type or "").lower()
+    threat_cat = (event.threat_category or "").lower()
+    tags = {t.lower() for t in (event.tags or [])}
+
+    pattern_map = {
+        "ransomware": {"threat_ransomware", "file_entropy_high", "file_modify"},
+        "c2": {"threat_c2_communication", "network_beacon", "network_connection"},
+        "lateral-movement": {"network_lateral_movement", "authentication", "network_connection"},
+        "credential-theft": {"threat_insider", "authentication", "process_anomaly"},
+        "persistence": {"persistence_new", "persistence_modified", "registry_modify"},
+    }
+    expected = pattern_map.get(pattern)
+    if expected is None:
+        return pattern in event_type or pattern in threat_cat or pattern in tags
+
+    return event_type in expected or any(token in tags for token in expected)
 
 # --- Routes ---
 
@@ -2639,6 +2684,290 @@ async def auto_prioritize_alerts(
             "summary": "Alert auto-prioritization failed",
             "priority_queue": [],
         }
+
+
+# --- Phase 26: Threat Hunting Engine ---
+
+@app.post("/threat-hunt/query")
+async def threat_hunt_query(
+    request: ThreatHuntQueryRequest,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Search events for analyst-driven hunts including attack pattern and behavior filters."""
+    limit = _safe_limit(request.limit, default=200, minimum=10, maximum=3000)
+    min_risk = max(0.0, min(100.0, float(request.min_risk_score)))
+    max_risk = max(min_risk, min(100.0, float(request.max_risk_score)))
+    min_anomaly = max(0.0, min(100.0, float(request.min_anomaly_score)))
+
+    try:
+        events = sentinel.repository.get_recent_events(limit=limit)
+        phrase = (request.query or "").strip().lower()
+        requested_tags = {t.lower() for t in (request.tags or [])}
+
+        results = []
+        for event in events:
+            if request.event_class and event.event_class != request.event_class:
+                continue
+            if request.event_type and event.event_type != request.event_type:
+                continue
+
+            risk = float(event.risk_score or 0.0)
+            anomaly = float(event.anomaly_score or 0.0)
+            if risk < min_risk or risk > max_risk:
+                continue
+            if anomaly < min_anomaly:
+                continue
+
+            if request.is_threat is not None and bool(event.is_threat) != request.is_threat:
+                continue
+
+            event_tags = {t.lower() for t in (event.tags or [])}
+            if requested_tags and not requested_tags.issubset(event_tags):
+                continue
+
+            if not _matches_attack_pattern(event, request.attack_pattern):
+                continue
+
+            if phrase:
+                search_blob = " ".join([
+                    event.description or "",
+                    event.raw_data or "",
+                    event.event_class or "",
+                    event.event_type or "",
+                    event.threat_category or "",
+                    str(event.metadata or ""),
+                    " ".join(event.tags or []),
+                ]).lower()
+                if phrase not in search_blob:
+                    continue
+
+            results.append({
+                "event_id": event.event_id,
+                "timestamp": event.timestamp,
+                "event_class": event.event_class,
+                "event_type": event.event_type,
+                "description": event.description,
+                "risk_score": round(risk, 2),
+                "anomaly_score": round(anomaly, 2),
+                "is_threat": bool(event.is_threat),
+                "threat_category": event.threat_category,
+                "tags": event.tags,
+                "metadata": event.metadata,
+            })
+
+        _threat_hunt_history.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "query": request.model_dump(),
+            "result_count": len(results),
+        })
+        if len(_threat_hunt_history) > 200:
+            del _threat_hunt_history[:-200]
+
+        return {
+            "query": request.model_dump(),
+            "result_count": len(results),
+            "results": results,
+        }
+    except Exception as exc:
+        logger.error(f"Threat hunt query failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Threat hunt query failed: {exc}")
+
+
+@app.get("/threat-hunt/saved")
+async def threat_hunt_saved_queries():
+    """Return all saved threat hunt queries."""
+    return {
+        "count": len(_saved_hunt_queries),
+        "saved_queries": _saved_hunt_queries,
+    }
+
+
+@app.post("/threat-hunt/save")
+async def threat_hunt_save_query(request: ThreatHuntSaveRequest):
+    """Persist a named hunt query for repeated analyst workflows."""
+    record = {
+        "id": f"hunt-{int(time.time() * 1000)}",
+        "name": request.name,
+        "description": request.description,
+        "query": request.query.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _saved_hunt_queries.append(record)
+    if len(_saved_hunt_queries) > 500:
+        del _saved_hunt_queries[:-500]
+
+    return {"saved": True, "query": record}
+
+
+@app.get("/threat-hunt/history")
+async def threat_hunt_history(limit: int = 50):
+    """Return recent hunt execution history for analyst auditing."""
+    max_items = _safe_limit(limit, default=50, minimum=1, maximum=200)
+    items = list(reversed(_threat_hunt_history))[:max_items]
+    return {
+        "count": len(items),
+        "history": items,
+    }
+
+
+# --- Phase 27: Attack Timeline Reconstruction ---
+
+@app.get("/forensics/timeline")
+async def forensics_timeline(
+    window_hours: int = 24,
+    limit: int = 500,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Reconstruct a unified timeline from recent events and alerts."""
+    now = datetime.now(timezone.utc)
+    window_hours = _safe_limit(window_hours, default=24, minimum=1, maximum=336)
+    limit = _safe_limit(limit, default=500, minimum=20, maximum=3000)
+    cutoff = now - timedelta(hours=window_hours)
+
+    try:
+        events = sentinel.repository.get_recent_events(limit=limit)
+        alerts = sentinel.repository.get_recent_alerts(limit=limit)
+
+        timeline: List[Dict[str, Any]] = []
+        for event in events:
+            ts = _parse_iso_datetime(event.timestamp)
+            if ts and ts >= cutoff:
+                timeline.append({
+                    "timestamp": event.timestamp,
+                    "type": "event",
+                    "id": event.event_id,
+                    "event_class": event.event_class,
+                    "event_type": event.event_type,
+                    "description": event.description,
+                    "risk_score": event.risk_score,
+                    "is_threat": event.is_threat,
+                })
+
+        for alert in alerts:
+            ts = _parse_iso_datetime(alert.created_at)
+            if ts and ts >= cutoff:
+                timeline.append({
+                    "timestamp": alert.created_at,
+                    "type": "alert",
+                    "id": alert.alert_id,
+                    "title": alert.title,
+                    "status": alert.status,
+                    "severity": alert.severity,
+                    "risk_score": alert.risk_score,
+                    "event_ids": alert.event_ids,
+                })
+
+        timeline.sort(key=lambda item: _parse_iso_datetime(item["timestamp"]) or cutoff)
+        return {
+            "window_hours": window_hours,
+            "from": cutoff.isoformat(),
+            "to": now.isoformat(),
+            "count": len(timeline),
+            "timeline": timeline,
+        }
+    except Exception as exc:
+        logger.error(f"Forensics timeline reconstruction failed: {exc}")
+        raise HTTPException(status_code=500, detail=f"Forensics timeline reconstruction failed: {exc}")
+
+
+@app.get("/forensics/process-tree/{pid}")
+async def forensics_process_tree(pid: int):
+    """Build process ancestry and direct children mapping for a process id."""
+    import psutil
+
+    if pid <= 0:
+        raise HTTPException(status_code=400, detail="pid must be a positive integer")
+
+    try:
+        process = psutil.Process(pid)
+    except psutil.NoSuchProcess:
+        raise HTTPException(status_code=404, detail=f"Process {pid} not found")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to inspect process {pid}: {exc}")
+
+    def _proc_info(proc: psutil.Process) -> Dict[str, Any]:
+        try:
+            return {
+                "pid": proc.pid,
+                "name": proc.name(),
+                "exe": proc.exe() if proc.exe() else "",
+                "cmdline": proc.cmdline(),
+                "username": proc.username(),
+                "create_time": proc.create_time(),
+                "status": proc.status(),
+            }
+        except Exception:
+            return {"pid": proc.pid, "name": "<unavailable>"}
+
+    ancestry: List[Dict[str, Any]] = []
+    current = process
+    while True:
+        parent = current.parent()
+        if not parent:
+            break
+        ancestry.append(_proc_info(parent))
+        current = parent
+
+    children = [_proc_info(child) for child in process.children(recursive=True)]
+
+    return {
+        "root": _proc_info(process),
+        "ancestry": ancestry,
+        "children": children,
+        "counts": {
+            "ancestry": len(ancestry),
+            "children": len(children),
+        },
+    }
+
+
+@app.get("/forensics/file-history/{path:path}")
+async def forensics_file_history(
+    path: str,
+    limit: int = 1000,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Return a timeline of file-related telemetry for a specific path."""
+    normalized = os.path.normcase(os.path.normpath(path or "")).strip()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="path is required")
+
+    limit = _safe_limit(limit, default=1000, minimum=50, maximum=5000)
+    events = sentinel.repository.get_recent_events(limit=limit)
+    matches: List[Dict[str, Any]] = []
+
+    for event in events:
+        file_path = ""
+        if event.file and event.file.path:
+            file_path = event.file.path
+        elif isinstance(event.metadata, dict):
+            file_path = str(event.metadata.get("path") or event.metadata.get("file_path") or "")
+
+        if not file_path:
+            continue
+
+        event_norm = os.path.normcase(os.path.normpath(file_path))
+        if event_norm != normalized:
+            continue
+
+        matches.append({
+            "timestamp": event.timestamp,
+            "event_id": event.event_id,
+            "event_type": event.event_type,
+            "event_class": event.event_class,
+            "description": event.description,
+            "risk_score": event.risk_score,
+            "is_threat": event.is_threat,
+            "metadata": event.metadata,
+        })
+
+    matches.sort(key=lambda item: _parse_iso_datetime(item["timestamp"]) or datetime.min.replace(tzinfo=timezone.utc))
+
+    return {
+        "path": normalized,
+        "count": len(matches),
+        "history": matches,
+    }
 
 # --- Entry Point ---
 

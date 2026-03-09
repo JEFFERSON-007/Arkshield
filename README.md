@@ -67,7 +67,10 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 
 - `GET /threat/posture` (Phase 24): Aggregates recent events and alerts into a posture score, threat density, severity distribution, and prioritized recommendations.
 - `POST /threat/auto-prioritize` (Phase 25): Produces an SLA-ready priority queue for alerts using risk, severity, status, and age.
+- `POST /threat-hunt/query` + related endpoints (Phase 26): Analyst-driven hunting with advanced filtering and saved query workflows.
+- `GET /forensics/timeline` + related endpoints (Phase 27): Attack timeline reconstruction, process ancestry, and file history.
 
 ## Documentation
 
 Architecture and platform design docs are in `docs/`.
+Extended roadmap for Phases 26-140 is in `docs/PHASES_26_140_ROADMAP.md`.

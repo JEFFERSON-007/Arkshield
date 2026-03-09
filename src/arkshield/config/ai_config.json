@@ -1,0 +1,9 @@
+{
+    "provider": "openrouter",
+    "api_key": "rc_2187b58de33d4f2229877dcf91552759cb139856e458ba3b5aec5e72246a557e",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model": "google/gemini-2.0-flash-001",
+    "max_tokens": 512,
+    "temperature": 0.7,
+    "system_prompt_prefix": "You are Nova, an elite AI security analyst for the Arkshield autonomous cyber defense platform. You have access to real-time telemetry from the system you are protecting. Be concise, professional, and security-focused. Use technical language when appropriate."
+}

@@ -1,0 +1,15 @@
+name: Ransomware Protection Playbook
+description: Automated containment of high-entropy file encryption activity.
+steps:
+  - action: kill_process
+    params:
+      pid: "{pid}"
+    critical: true
+  - action: quarantine_file
+    params:
+      filepath: "{filepath}"
+      quarantine_dir: "C:\\ProgramData\\NexusSentinel\\Quarantine"
+    critical: false
+  - action: isolate_host
+    params: {}
+    critical: false

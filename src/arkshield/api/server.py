@@ -106,6 +106,13 @@ class SystemSettingUpdate(BaseModel):
     setting: str
     value: Any
 
+
+class AutoPrioritizeRequest(BaseModel):
+    window_hours: int = 24
+    alert_limit: int = 200
+    include_resolved: bool = False
+    max_results: int = 100
+
 # --- Routes ---
 
 @app.get("/")
@@ -2518,6 +2525,119 @@ async def threat_posture(
             "posture_score": 0,
             "posture_level": "critical",
             "summary": "Threat posture analysis failed",
+        }
+
+
+# --- Phase 25: Automated Alert Prioritization ---
+
+@app.post("/threat/auto-prioritize")
+async def auto_prioritize_alerts(
+    request: AutoPrioritizeRequest,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Rank alerts by operational urgency and assign SLA buckets for SOC triage."""
+    now = datetime.now(timezone.utc)
+    window_hours = _safe_limit(request.window_hours, default=24, minimum=1, maximum=336)
+    alert_limit = _safe_limit(request.alert_limit, default=200, minimum=25, maximum=3000)
+    max_results = _safe_limit(request.max_results, default=100, minimum=1, maximum=500)
+    include_resolved = bool(request.include_resolved)
+    cutoff = now - timedelta(hours=window_hours)
+
+    status_weight = {
+        "new": 12,
+        "acknowledged": 8,
+        "investigating": 6,
+        "contained": 3,
+        "resolved": -10,
+        "false_positive": -15,
+        "suppressed": -12,
+    }
+
+    try:
+        alerts = sentinel.repository.get_recent_alerts(limit=alert_limit)
+        candidates = []
+
+        for alert in alerts:
+            created_at = _parse_iso_datetime(alert.created_at)
+            if not created_at or created_at < cutoff:
+                continue
+
+            if (not include_resolved) and alert.status in {"resolved", "false_positive", "suppressed"}:
+                continue
+
+            age_hours = max(0.0, (now - created_at).total_seconds() / 3600)
+            risk_score = float(alert.risk_score or 0.0)
+            severity = int(alert.severity or 0)
+
+            # Composite score balances risk, severity, status urgency, and staleness.
+            priority_score = (
+                min(100.0, risk_score) * 0.60
+                + min(4, max(0, severity)) * 10.0
+                + status_weight.get(alert.status, 0)
+                + min(20.0, age_hours * 0.8)
+            )
+            priority_score = round(max(0.0, min(100.0, priority_score)), 2)
+
+            if priority_score >= 85:
+                priority_tier = "critical"
+                sla_target = "15m"
+                action = "Escalate immediately and start containment actions"
+            elif priority_score >= 70:
+                priority_tier = "high"
+                sla_target = "1h"
+                action = "Assign analyst and begin investigation"
+            elif priority_score >= 50:
+                priority_tier = "medium"
+                sla_target = "4h"
+                action = "Queue for same-shift triage"
+            else:
+                priority_tier = "low"
+                sla_target = "24h"
+                action = "Monitor and review in routine cycle"
+
+            candidates.append({
+                "alert_id": alert.alert_id,
+                "title": alert.title,
+                "status": alert.status,
+                "severity": severity,
+                "risk_score": round(risk_score, 2),
+                "created_at": alert.created_at,
+                "age_hours": round(age_hours, 2),
+                "priority_score": priority_score,
+                "priority_tier": priority_tier,
+                "sla_target": sla_target,
+                "recommended_action": action,
+                "category": alert.category,
+                "tags": alert.tags,
+            })
+
+        candidates.sort(key=lambda item: item["priority_score"], reverse=True)
+        queue = candidates[:max_results]
+
+        tier_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        for item in queue:
+            tier_counts[item["priority_tier"]] += 1
+
+        return {
+            "window": {
+                "hours": window_hours,
+                "from": cutoff.isoformat(),
+                "to": now.isoformat(),
+            },
+            "summary": {
+                "alerts_analyzed": len(candidates),
+                "alerts_returned": len(queue),
+                "include_resolved": include_resolved,
+                "tier_counts": tier_counts,
+            },
+            "priority_queue": queue,
+        }
+    except Exception as exc:
+        logger.error(f"Auto-prioritization failed: {exc}")
+        return {
+            "error": str(exc),
+            "summary": "Alert auto-prioritization failed",
+            "priority_queue": [],
         }
 
 # --- Entry Point ---

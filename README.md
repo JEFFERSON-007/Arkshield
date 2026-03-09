@@ -66,6 +66,7 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 ## API Highlight
 
 - `GET /threat/posture` (Phase 24): Aggregates recent events and alerts into a posture score, threat density, severity distribution, and prioritized recommendations.
+- `POST /threat/auto-prioritize` (Phase 25): Produces an SLA-ready priority queue for alerts using risk, severity, status, and age.
 
 ## Documentation
 

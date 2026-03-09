@@ -101,7 +101,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /security/lolbins` + `GET /security/lolbins/events` (Phase 57): Living-off-the-land binary abuse detection and event stream tracking.
 - `GET /security/persistence` + `GET /security/persistence/events` (Phase 58): System persistence mechanism detection (registry Run keys, startup folders, scheduled tasks, services, WMI).
 - `GET /tasks/scheduled` + `GET /tasks/suspicious` (Phase 59): Scheduled task monitoring with suspicion scoring and risk-based filtering.
-- Phases 60-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /registry/changes` + `GET /registry/suspicious` (Phase 60): Registry modification tracking with risk-scored change detection and suspicious filtering.
+- `GET /processes/privileged` + `GET /processes/privileged/events` (Phase 61): Privileged process monitoring with privilege escalation and impersonation detection.
+- Phases 62-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

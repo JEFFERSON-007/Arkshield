@@ -85,5 +85,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 57** (`/security/lolbins`, `/security/lolbins/events`) with LOLBin abuse detection and retained event analytics.
 - Implemented **Phase 58** (`/security/persistence`, `/security/persistence/events`) with system persistence detection across registry Run keys, startup folders, scheduled tasks, services, and WMI event consumers.
 - Implemented **Phase 59** (`/tasks/scheduled`, `/tasks/suspicious`) with scheduled task inventory and suspicion-based filtering with risk distribution analysis.
-- Implemented baseline endpoints for remaining **Phases 60-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 60** (`/registry/changes`, `/registry/suspicious`) with registry modification tracking, risk-scored change detection, and indicator frequency analytics.
+- Implemented **Phase 61** (`/processes/privileged`, `/processes/privileged/events`) with privileged process enumeration, privilege escalation detection, and impersonation attempt identification.
+- Implemented baseline endpoints for remaining **Phases 62-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

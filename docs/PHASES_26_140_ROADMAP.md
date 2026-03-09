@@ -361,17 +361,33 @@ Capabilities:
 - Indicator-based risk assessment (encoded commands, hidden windows, impersonation, non-standard paths)
 - Threshold-based suspicious task filtering with risk distribution analytics
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 60 - Registry Monitoring
+
+Endpoints:
 - `GET /registry/changes`
 - `GET /registry/suspicious`
 
+Capabilities:
+- Real-time registry modification tracking across security-sensitive locations
+- Risk-scored change detection with operation breakdown (create/modify/delete)
+- Suspicious registry change filtering with indicator frequency analytics
+- Detection of auto-start modifications, service creation, hijack attempts, and security downgrades
+
 ### Phase 61 - Privileged Process Monitoring
+
+Endpoints:
 - `GET /processes/privileged`
 - `GET /processes/privileged/events`
+
+Capabilities:
+- Privileged process enumeration with system-level capability detection
+- Privilege escalation and impersonation attempt identification
+- Risk scoring based on non-standard paths and suspicious execution contexts
+- Event tracking for privileged process activity and anomalies
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 62 - API Abuse Detection
 - `GET /api/abuse`

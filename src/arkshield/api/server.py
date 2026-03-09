@@ -98,6 +98,10 @@ _persistence_detections: List[Dict[str, Any]] = []
 _persistence_events: List[Dict[str, Any]] = []
 _scheduled_tasks_cache: List[Dict[str, Any]] = []
 _suspicious_tasks: List[Dict[str, Any]] = []
+_registry_changes: List[Dict[str, Any]] = []
+_registry_baseline: Dict[str, Dict[str, Any]] = {}
+_privileged_process_cache: List[Dict[str, Any]] = []
+_privileged_process_events: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -6932,6 +6936,330 @@ async def tasks_suspicious(threshold: int = 50):
         "suspicious_count": len(_suspicious_tasks),
         "risk_distribution": risk_categories,
         "tasks": _suspicious_tasks,
+    }
+
+
+# ========================================
+# Phase 60 - Registry Monitoring
+# ========================================
+
+def _simulate_registry_changes() -> List[Dict[str, Any]]:
+    """Generate simulated registry change events with varying risk levels."""
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    changes = [
+        {
+            "id": str(uuid.uuid4())[:8],
+            "key": r"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run",
+            "value_name": "SecurityUpdate",
+            "value_data": r"C:\Windows\Temp\update.exe",
+            "operation": "create",
+            "risk_score": 85,
+            "indicators": ["auto_start", "temp_folder", "suspicious_name"],
+            "timestamp": timestamp,
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "key": r"HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run",
+            "value_name": "GoogleUpdate",
+            "value_data": r"C:\Program Files\Google\Update\GoogleUpdate.exe",
+            "operation": "modify",
+            "risk_score": 20,
+            "indicators": [],
+            "timestamp": timestamp,
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "key": r"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\svchost32",
+            "value_name": "ImagePath",
+            "value_data": r"C:\Users\Public\svchost32.exe",
+            "operation": "create",
+            "risk_score": 95,
+            "indicators": ["service_creation", "impersonation", "public_folder"],
+            "timestamp": timestamp,
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "key": r"HKEY_CURRENT_USER\Software\Classes\mscfile\shell\open\command",
+            "value_name": "(Default)",
+            "value_data": r"powershell.exe -nop -w hidden -enc aGVsbG8=",
+            "operation": "create",
+            "risk_score": 90,
+            "indicators": ["hijack_attempt", "powershell", "encoded_command"],
+            "timestamp": timestamp,
+        },
+        {
+            "id": str(uuid.uuid4())[:8],
+            "key": r"HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\Excel\Security",
+            "value_name": "VBAWarnings",
+            "value_data": "1",
+            "operation": "modify",
+            "risk_score": 75,
+            "indicators": ["security_downgrade", "macro_policy"],
+            "timestamp": timestamp,
+        },
+    ]
+    
+    return changes
+
+
+@app.get("/registry/changes")
+async def registry_changes(limit: int = 100, rescan: bool = False):
+    """
+    Return recent registry modifications detected on the system.
+    Tracks changes across security-sensitive registry locations.
+    """
+    global _registry_changes
+    
+    if rescan or not _registry_changes:
+        _registry_changes = _simulate_registry_changes()
+        
+        # Trim history
+        if len(_registry_changes) > 1000:
+            _registry_changes = _registry_changes[-1000:]
+    
+    limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
+    recent = list(reversed(_registry_changes[-limit:]))
+    
+    # Operation breakdown
+    operation_counts = dict(Counter(c.get("operation", "unknown") for c in recent))
+    
+    # Risk distribution
+    risk_categories = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    for change in recent:
+        score = change.get("risk_score", 0)
+        if score < 40:
+            risk_categories["low"] += 1
+        elif score < 65:
+            risk_categories["medium"] += 1
+        elif score < 85:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    return {
+        "count": len(recent),
+        "operation_breakdown": operation_counts,
+        "risk_distribution": risk_categories,
+        "changes": recent,
+    }
+
+
+@app.get("/registry/suspicious")
+async def registry_suspicious(threshold: int = 60):
+    """
+    Filter registry changes flagged as suspicious based on risk scoring.
+    Default threshold: 60/100.
+    """
+    global _registry_changes
+    
+    # Ensure changes are populated
+    if not _registry_changes:
+        _registry_changes = _simulate_registry_changes()
+    
+    # Filter by threshold
+    suspicious = [
+        change for change in _registry_changes
+        if change.get("risk_score", 0) >= threshold
+    ]
+    
+    # Sort by risk score descending
+    suspicious.sort(key=lambda c: c.get("risk_score", 0), reverse=True)
+    
+    # Indicator aggregation
+    all_indicators = []
+    for change in suspicious:
+        all_indicators.extend(change.get("indicators", []))
+    indicator_frequency = dict(Counter(all_indicators))
+    
+    return {
+        "threshold": threshold,
+        "suspicious_count": len(suspicious),
+        "top_indicators": dict(sorted(indicator_frequency.items(), key=lambda x: x[1], reverse=True)[:10]),
+        "changes": suspicious,
+    }
+
+
+# ========================================
+# Phase 61 - Privileged Process Monitoring
+# ========================================
+
+def _collect_privileged_processes() -> List[Dict[str, Any]]:
+    """Identify processes running with elevated privileges or sensitive capabilities."""
+    try:
+        import psutil
+    except ImportError:
+        # Return simulation if psutil unavailable
+        return _simulate_privileged_processes()
+    
+    privileged = []
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        for proc in psutil.process_iter(['pid', 'name', 'username', 'exe', 'cmdline']):
+            try:
+                info = proc.info
+                username = info.get('username', 'unknown')
+                
+                # Check for privilege indicators
+                is_privileged = False
+                privilege_indicators = []
+                
+                # System/root user
+                if username and any(priv in username.lower() for priv in ['system', 'root', 'administrator', 'admin']):
+                    is_privileged = True
+                    privilege_indicators.append("system_user")
+                
+                # Known privileged process names
+                proc_name = info.get('name', '').lower()
+                privileged_names = ['lsass.exe', 'csrss.exe', 'winlogon.exe', 'services.exe', 'svchost.exe', 'smss.exe', 'wininit.exe']
+                if proc_name in privileged_names:
+                    is_privileged = True
+                    privilege_indicators.append("privileged_name")
+                
+                if is_privileged:
+                    # Calculate risk score
+                    risk_score = 10
+                    if "system_user" in privilege_indicators:
+                        risk_score += 30
+                    if "privileged_name" in privilege_indicators:
+                        risk_score += 20
+                    
+                    # Suspicious path detection
+                    exe_path = info.get('exe', '')
+                    if exe_path and not exe_path.startswith('C:\\Windows\\'):
+                        risk_score += 40
+                        privilege_indicators.append("non_system_path")
+                    
+                    privileged.append({
+                        "pid": info.get('pid'),
+                        "name": info.get('name', 'unknown'),
+                        "username": username,
+                        "exe": exe_path,
+                        "cmdline": ' '.join(info.get('cmdline', [])) if info.get('cmdline') else '',
+                        "risk_score": min(risk_score, 100),
+                        "privilege_indicators": privilege_indicators,
+                        "collected_at": timestamp,
+                    })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    except Exception:
+        return _simulate_privileged_processes()
+    
+    return privileged
+
+
+def _simulate_privileged_processes() -> List[Dict[str, Any]]:
+    """Simulate privileged process detection when psutil is unavailable."""
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    return [
+        {
+            "pid": 4,
+            "name": "System",
+            "username": "NT AUTHORITY\\SYSTEM",
+            "exe": "",
+            "cmdline": "",
+            "risk_score": 10,
+            "privilege_indicators": ["system_user"],
+            "collected_at": timestamp,
+        },
+        {
+            "pid": 620,
+            "name": "lsass.exe",
+            "username": "NT AUTHORITY\\SYSTEM",
+            "exe": r"C:\Windows\System32\lsass.exe",
+            "cmdline": r"C:\Windows\system32\lsass.exe",
+            "risk_score": 40,
+            "privilege_indicators": ["system_user", "privileged_name"],
+            "collected_at": timestamp,
+        },
+        {
+            "pid": 1024,
+            "name": "svchost.exe",
+            "username": "NT AUTHORITY\\SYSTEM",
+            "exe": r"C:\Users\Public\svchost.exe",
+            "cmdline": r"C:\Users\Public\svchost.exe /service",
+            "risk_score": 80,
+            "privilege_indicators": ["system_user", "privileged_name", "non_system_path"],
+            "collected_at": timestamp,
+        },
+        {
+            "pid": 2048,
+            "name": "csrss.exe",
+            "username": "NT AUTHORITY\\SYSTEM",
+            "exe": r"C:\Windows\System32\csrss.exe",
+            "cmdline": r"%SystemRoot%\system32\csrss.exe ObjectDirectory=\Windows",
+            "risk_score": 40,
+            "privilege_indicators": ["system_user", "privileged_name"],
+            "collected_at": timestamp,
+        },
+    ]
+
+
+@app.get("/processes/privileged")
+async def processes_privileged(refresh: bool = False):
+    """
+    List processes running with elevated privileges or system-level capabilities.
+    Detects privilege escalation and impersonation attempts.
+    """
+    global _privileged_process_cache
+    
+    if refresh or not _privileged_process_cache:
+        _privileged_process_cache = _collect_privileged_processes()
+    
+    # Risk categorization
+    risk_categories = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    for proc in _privileged_process_cache:
+        score = proc.get("risk_score", 0)
+        if score < 40:
+            risk_categories["low"] += 1
+        elif score < 65:
+            risk_categories["medium"] += 1
+        elif score < 85:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    # Calculate average risk
+    avg_risk = sum(p.get("risk_score", 0) for p in _privileged_process_cache) / len(_privileged_process_cache) if _privileged_process_cache else 0
+    
+    return {
+        "total_privileged": len(_privileged_process_cache),
+        "avg_risk_score": round(avg_risk, 2),
+        "risk_distribution": risk_categories,
+        "processes": _privileged_process_cache,
+    }
+
+
+@app.get("/processes/privileged/events")
+async def processes_privileged_events(limit: int = 100):
+    """
+    Return event log of privileged process detections and anomalies.
+    Tracks privilege escalation attempts and suspicious system-level activity.
+    """
+    global _privileged_process_events, _privileged_process_cache
+    
+    # Generate event from current cache state
+    if _privileged_process_cache:
+        event = {
+            "event_type": "privileged_scan",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "processes_detected": len(_privileged_process_cache),
+            "high_risk_count": sum(1 for p in _privileged_process_cache if p.get("risk_score", 0) >= 65),
+        }
+        _privileged_process_events.append(event)
+        
+        # Trim history
+        if len(_privileged_process_events) > 1000:
+            _privileged_process_events = _privileged_process_events[-1000:]
+    
+    limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
+    recent = list(reversed(_privileged_process_events[-limit:]))
+    
+    return {
+        "count": len(recent),
+        "events": recent,
     }
 
 

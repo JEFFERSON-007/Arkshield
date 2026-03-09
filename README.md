@@ -73,7 +73,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `POST /ai/malware/classify` + `GET /ai/malware/model-status` (Phase 29): Heuristic malware family classification and model runtime health.
 - `GET /threat-intel/global` + domain/hash lookups (Phase 30): Global threat intelligence with telemetry-driven reputation scoring.
 - `GET /security/integrity` + watch/alerts endpoints (Phase 31): File integrity monitoring with baseline hash tamper detection.
-- Phases 32-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /devices/usb` + device history/block endpoints (Phase 32): Removable device tracking with policy-layer block controls.
+- `GET /security/privilege-events` + `GET /security/admin-actions` (Phase 33): Privilege escalation indicators and admin action monitoring.
+- Phases 34-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

@@ -39,6 +39,8 @@ _malware_model_state: Dict[str, Any] = {
 }
 _integrity_watchlist: Dict[str, Dict[str, Any]] = {}
 _integrity_alerts: List[Dict[str, Any]] = []
+_blocked_devices: Dict[str, Dict[str, Any]] = {}
+_device_history: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -3585,6 +3587,210 @@ async def security_integrity_alerts(limit: int = 100):
     return {
         "count": len(alerts),
         "alerts": alerts,
+    }
+
+
+# --- Phase 32: USB and Device Monitoring (Deep Implementation) ---
+
+@app.get("/devices/usb")
+async def devices_usb():
+    """Enumerate removable devices and blocked device state."""
+    import psutil
+
+    devices: List[Dict[str, Any]] = []
+    partitions = psutil.disk_partitions(all=False)
+    for part in partitions:
+        opts = (part.opts or "").lower()
+        is_removable = "removable" in opts
+        if os.name == "nt" and part.device.upper().startswith(("A:", "B:")):
+            is_removable = True
+
+        if not is_removable:
+            continue
+
+        try:
+            usage = psutil.disk_usage(part.mountpoint)
+            size_total_gb = round(usage.total / (1024 ** 3), 2)
+            free_gb = round(usage.free / (1024 ** 3), 2)
+        except Exception:
+            size_total_gb = 0.0
+            free_gb = 0.0
+
+        device_id = part.device.replace("\\", "_").replace(":", "")
+        devices.append({
+            "device_id": device_id,
+            "device": part.device,
+            "mountpoint": part.mountpoint,
+            "fstype": part.fstype,
+            "options": part.opts,
+            "size_total_gb": size_total_gb,
+            "free_gb": free_gb,
+            "blocked": device_id in _blocked_devices,
+        })
+
+    event = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": "enumerate_usb",
+        "device_count": len(devices),
+    }
+    _device_history.append(event)
+    if len(_device_history) > 1000:
+        del _device_history[:-1000]
+
+    return {
+        "count": len(devices),
+        "devices": devices,
+        "blocked_devices": list(_blocked_devices.values()),
+    }
+
+
+@app.get("/devices/history")
+async def devices_history(limit: int = 100):
+    """Return recent removable device monitoring actions."""
+    max_items = _safe_limit(limit, default=100, minimum=1, maximum=1000)
+    history = list(reversed(_device_history))[:max_items]
+    return {
+        "count": len(history),
+        "history": history,
+    }
+
+
+@app.post("/devices/block/{device_id}")
+async def devices_block(device_id: str, reason: str = "Policy block"):
+    """Block a removable device id at Arkshield policy layer."""
+    normalized = (device_id or "").strip()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="device_id is required")
+
+    record = {
+        "device_id": normalized,
+        "blocked_at": datetime.now(timezone.utc).isoformat(),
+        "reason": reason,
+        "enforcement": "policy-layer",
+        "note": "OS-level removable media hard block can be integrated via endpoint policy tooling.",
+    }
+    _blocked_devices[normalized] = record
+    _device_history.append({
+        "timestamp": record["blocked_at"],
+        "action": "block_device",
+        "device_id": normalized,
+        "reason": reason,
+    })
+
+    return {
+        "blocked": True,
+        "device": record,
+    }
+
+
+# --- Phase 33: Privilege Escalation Detection (Deep Implementation) ---
+
+@app.get("/security/privilege-events")
+async def security_privilege_events(
+    window_hours: int = 72,
+    limit: int = 1500,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Detect likely privilege escalation indicators from telemetry."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=_safe_limit(window_hours, default=72, minimum=1, maximum=720))
+    events = sentinel.repository.get_recent_events(limit=_safe_limit(limit, default=1500, minimum=100, maximum=5000))
+
+    keywords = ["privilege", "elevat", "admin", "token", "uac", "bypass", "system32", "runas"]
+    findings: List[Dict[str, Any]] = []
+    for evt in events:
+        ts = _parse_iso_datetime(evt.timestamp)
+        if ts and ts < cutoff:
+            continue
+
+        blob = " ".join([
+            evt.event_type or "",
+            evt.event_class or "",
+            evt.description or "",
+            evt.threat_category or "",
+            str(evt.metadata or ""),
+            " ".join(evt.tags or []),
+        ]).lower()
+
+        keyword_hits = [kw for kw in keywords if kw in blob]
+        risky = bool(keyword_hits) or (int(evt.severity or 0) >= 3 and bool(evt.is_threat))
+        if not risky:
+            continue
+
+        confidence = min(0.99, round(0.45 + 0.08 * len(keyword_hits) + (0.10 if evt.is_threat else 0.0), 2))
+        findings.append({
+            "event_id": evt.event_id,
+            "timestamp": evt.timestamp,
+            "event_class": evt.event_class,
+            "event_type": evt.event_type,
+            "description": evt.description,
+            "risk_score": evt.risk_score,
+            "is_threat": evt.is_threat,
+            "keyword_hits": keyword_hits,
+            "confidence": confidence,
+        })
+
+    findings.sort(key=lambda x: (x["confidence"], float(x.get("risk_score") or 0.0)), reverse=True)
+    return {
+        "window_hours": window_hours,
+        "count": len(findings),
+        "events": findings[:500],
+    }
+
+
+@app.get("/security/admin-actions")
+async def security_admin_actions(limit: int = 300):
+    """Monitor likely admin/system actions from running processes."""
+    import psutil
+
+    suspicious_cmd_tokens = {
+        "net user",
+        "net localgroup",
+        "sc config",
+        "reg add",
+        "powershell -enc",
+        "wmic",
+        "bcdedit",
+    }
+    elevated_users = {"nt authority\\system", "system", "root", "administrator"}
+
+    actions: List[Dict[str, Any]] = []
+    for proc in psutil.process_iter(["pid", "name", "username", "cmdline", "create_time"]):
+        try:
+            info = proc.info
+            username = str(info.get("username") or "").lower()
+            cmdline = " ".join(info.get("cmdline") or []).lower()
+            if not username and not cmdline:
+                continue
+
+            reasons = []
+            if username in elevated_users or "admin" in username:
+                reasons.append("elevated_account")
+
+            matched = [token for token in suspicious_cmd_tokens if token in cmdline]
+            if matched:
+                reasons.append("suspicious_admin_command")
+
+            if not reasons:
+                continue
+
+            actions.append({
+                "pid": info.get("pid"),
+                "process": info.get("name"),
+                "username": info.get("username"),
+                "cmdline": info.get("cmdline") or [],
+                "create_time": info.get("create_time"),
+                "reasons": reasons,
+                "matched_tokens": matched,
+            })
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+        except Exception:
+            continue
+
+    max_items = _safe_limit(limit, default=300, minimum=1, maximum=2000)
+    return {
+        "count": len(actions[:max_items]),
+        "actions": actions[:max_items],
     }
 
 

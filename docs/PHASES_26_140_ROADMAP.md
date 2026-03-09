@@ -73,18 +73,30 @@ Capabilities:
 - Detect tampered system files
 - Track file changes
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
-
 ### Phase 32 - USB and Device Monitoring
+
+Endpoints:
 - `GET /devices/usb`
 - `GET /devices/history`
 - `POST /devices/block/{device_id}`
 
+Capabilities:
+- Removable device tracking
+- USB attack prevention
+
 ### Phase 33 - Privilege Escalation Detection
+
+Endpoints:
 - `GET /security/privilege-events`
 - `GET /security/admin-actions`
+
+Capabilities:
+- Detect privilege escalation
+- Monitor admin activity
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
 
 ### Phase 34 - Ransomware Detection Engine
 - `GET /ransomware/alerts`

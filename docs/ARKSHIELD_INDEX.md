@@ -79,5 +79,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 51** (`/behavior/baseline`, `/behavior/baseline/train`, `/behavior/anomalies`) with behavioral baseline training and anomaly drift detection.
 - Implemented **Phase 52** (`/commands/history`, `/commands/suspicious`, `/commands/block/{command}`) with command telemetry collection, suspicious pattern detection, and command block policy controls.
 - Implemented **Phase 53** (`/network/lateral-movement`, `/network/lateral-alerts`) with correlated lateral movement scoring and alert history management.
-- Implemented baseline endpoints for remaining **Phases 54-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 54** (`/threat/mitre`, `/threat/mitre/{technique}`, `/threat/mitre/mapping`) with ATT&CK technique mapping and tactic coverage from active telemetry.
+- Implemented **Phase 55** (`/file/reputation/{hash}`, `/file/reputation/analyze`) with consolidated hash intelligence and metadata-adjusted reputation scoring.
+- Implemented baseline endpoints for remaining **Phases 56-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

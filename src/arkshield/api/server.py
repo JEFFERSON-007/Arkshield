@@ -90,6 +90,7 @@ _behavior_observation_history: List[Dict[str, Any]] = []
 _command_observation_history: List[Dict[str, Any]] = []
 _blocked_commands: Dict[str, Dict[str, Any]] = {}
 _lateral_movement_alerts: List[Dict[str, Any]] = []
+_file_reputation_analysis_history: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -6149,6 +6150,251 @@ async def network_lateral_alerts(limit: int = 100):
         "count": len(recent),
         "severity_breakdown": severity_breakdown,
         "alerts": list(reversed(recent)),
+    }
+
+
+# --- Phase 54: MITRE ATTACK Mapping (Deep Implementation) ---
+
+_MITRE_TECHNIQUES: Dict[str, Dict[str, Any]] = {
+    "T1059": {
+        "name": "Command and Scripting Interpreter",
+        "tactic": "Execution",
+        "description": "Adversaries execute commands/scripts to control systems.",
+        "data_sources": ["process", "command-line"],
+    },
+    "T1021": {
+        "name": "Remote Services",
+        "tactic": "Lateral Movement",
+        "description": "Adversaries move laterally using valid remote service protocols.",
+        "data_sources": ["network", "authentication"],
+    },
+    "T1078": {
+        "name": "Valid Accounts",
+        "tactic": "Defense Evasion",
+        "description": "Compromised or abused valid accounts are used to persist and move.",
+        "data_sources": ["identity", "auth"],
+    },
+    "T1566": {
+        "name": "Phishing",
+        "tactic": "Initial Access",
+        "description": "Phishing is used to gain initial access.",
+        "data_sources": ["email", "url"],
+    },
+    "T1486": {
+        "name": "Data Encrypted for Impact",
+        "tactic": "Impact",
+        "description": "Ransomware-like encryption activity impacts availability.",
+        "data_sources": ["filesystem", "process"],
+    },
+    "T1547": {
+        "name": "Boot or Logon Autostart Execution",
+        "tactic": "Persistence",
+        "description": "Autostart mechanisms provide persistence at boot/logon.",
+        "data_sources": ["registry", "startup"],
+    },
+}
+
+
+async def _build_mitre_signal_mapping() -> List[Dict[str, Any]]:
+    """Map current Arkshield telemetry signals to MITRE techniques with confidence scoring."""
+    suspicious_commands = await commands_suspicious(limit=80)
+    lateral = await network_lateral_movement()
+    insider = await insider_risk_scores()
+    ransomware = await ransomware_alerts()
+
+    mappings: List[Dict[str, Any]] = []
+
+    cmd_count = int(suspicious_commands.get("count", 0))
+    if cmd_count > 0:
+        mappings.append({
+            "technique": "T1059",
+            "confidence": min(100, 45 + cmd_count * 8),
+            "evidence": {
+                "suspicious_command_count": cmd_count,
+                "top_examples": [c.get("command", "")[:120] for c in suspicious_commands.get("suspicious_commands", [])[:3]],
+            },
+        })
+
+    lateral_score = int(lateral.get("risk_score", 0))
+    if lateral_score >= 35:
+        mappings.append({
+            "technique": "T1021",
+            "confidence": min(100, 40 + lateral_score),
+            "evidence": lateral.get("metrics", {}),
+        })
+
+    insider_score = int(insider.get("portfolio_risk_score", 0))
+    if insider_score >= 40:
+        mappings.append({
+            "technique": "T1078",
+            "confidence": min(100, 30 + insider_score),
+            "evidence": {
+                "portfolio_risk_score": insider_score,
+                "high_risk_identities": insider.get("high_risk_identities", 0),
+            },
+        })
+
+    rw_count = int(ransomware.get("total_alerts", 0)) if isinstance(ransomware, dict) else 0
+    if rw_count > 0:
+        mappings.append({
+            "technique": "T1486",
+            "confidence": min(100, 35 + rw_count * 15),
+            "evidence": {
+                "ransomware_alerts": rw_count,
+                "severity_counts": ransomware.get("severity_counts", {}),
+            },
+        })
+
+    return mappings
+
+
+@app.get("/threat/mitre")
+async def threat_mitre():
+    """Return MITRE ATT&CK coverage summary based on active telemetry mappings."""
+    mappings = await _build_mitre_signal_mapping()
+
+    by_tactic: Dict[str, int] = {}
+    enriched = []
+    for item in mappings:
+        technique_id = str(item.get("technique") or "")
+        meta = _MITRE_TECHNIQUES.get(technique_id, {})
+        tactic = meta.get("tactic", "Unknown")
+        by_tactic[tactic] = by_tactic.get(tactic, 0) + 1
+        enriched.append({
+            "technique": technique_id,
+            "name": meta.get("name", "Unknown"),
+            "tactic": tactic,
+            "confidence": item.get("confidence", 0),
+            "evidence": item.get("evidence", {}),
+        })
+
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "total_techniques_mapped": len(enriched),
+        "tactic_coverage": by_tactic,
+        "mappings": sorted(enriched, key=lambda x: x.get("confidence", 0), reverse=True),
+    }
+
+
+@app.get("/threat/mitre/{technique}")
+async def threat_mitre_technique(technique: str):
+    """Return ATT&CK technique details and current evidence for the requested technique."""
+    tid = technique.strip().upper()
+    if tid not in _MITRE_TECHNIQUES:
+        raise HTTPException(status_code=404, detail=f"Technique not found: {tid}")
+
+    mappings = await _build_mitre_signal_mapping()
+    current = next((m for m in mappings if m.get("technique") == tid), None)
+    return {
+        "technique": tid,
+        "metadata": _MITRE_TECHNIQUES[tid],
+        "currently_observed": current is not None,
+        "current_mapping": current,
+        "recommendations": [
+            "Harden detection rules for mapped ATT&CK data sources",
+            "Correlate identity, process, and network telemetry for confidence uplift",
+        ],
+    }
+
+
+@app.get("/threat/mitre/mapping")
+async def threat_mitre_mapping():
+    """Return direct telemetry-to-technique mapping records for ATT&CK correlation pipelines."""
+    mappings = await _build_mitre_signal_mapping()
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "count": len(mappings),
+        "records": mappings,
+    }
+
+
+# --- Phase 55: File Reputation Engine (Deep Implementation) ---
+
+@app.get("/file/reputation/{hash}")
+async def file_reputation(hash: str):
+    """Return consolidated file reputation from local hash intel and malware heuristics."""
+    hash_value = hash.strip().lower()
+    base = await lookup_hash(hash_value)
+    malware = await threat_intel_malware_hash(hash_value)
+
+    base_verdict = str(base.get("verdict", "CLEAN")).upper()
+    malware_rep = str(malware.get("reputation", "unknown")).lower()
+    score = int(malware.get("risk_score", 0))
+
+    if base_verdict == "MALICIOUS" or malware_rep == "malicious":
+        final = "malicious"
+    elif score >= 45 or malware_rep == "suspicious":
+        final = "suspicious"
+    else:
+        final = "benign"
+
+    return {
+        "hash": hash_value,
+        "hash_type": base.get("hash_type", "Unknown"),
+        "reputation": final,
+        "risk_score": score,
+        "signals": {
+            "hash_verdict": base_verdict,
+            "malware_reputation": malware_rep,
+            "malware_family_hint": malware.get("family_hint", "unknown"),
+        },
+        "details": {
+            "hash_lookup": base,
+            "malware_intel": malware,
+        },
+    }
+
+
+@app.post("/file/reputation/analyze")
+async def file_reputation_analyze(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Analyze file input metadata/content and return a normalized reputation decision."""
+    provided_hash = str(payload.get("hash", "")).strip().lower()
+    content = str(payload.get("content", ""))
+    filename = str(payload.get("filename", "unknown.bin"))
+
+    if not provided_hash:
+        if content:
+            provided_hash = hashlib.sha256(content.encode("utf-8", errors="ignore")).hexdigest()
+        else:
+            raise HTTPException(status_code=400, detail="Provide either 'hash' or 'content' in request body")
+
+    reputation = await file_reputation(provided_hash)
+
+    suspicious_name_patterns = [r"(?i)invoice", r"(?i)update", r"(?i)crack", r"(?i)keygen", r"(?i)patch"]
+    name_penalty = 0
+    matched_name_patterns = []
+    for pattern in suspicious_name_patterns:
+        if re.search(pattern, filename):
+            name_penalty += 8
+            matched_name_patterns.append(pattern)
+
+    adjusted_score = min(100, int(reputation.get("risk_score", 0)) + name_penalty)
+    adjusted_rep = "malicious" if adjusted_score >= 75 else "suspicious" if adjusted_score >= 45 else "benign"
+
+    record = {
+        "analysis_id": f"rep-{uuid.uuid4().hex[:10]}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "filename": filename,
+        "hash": provided_hash,
+        "base_reputation": reputation.get("reputation", "unknown"),
+        "adjusted_reputation": adjusted_rep,
+        "risk_score": adjusted_score,
+        "name_pattern_hits": matched_name_patterns,
+        "verdict_rationale": [
+            f"base:{reputation.get('reputation', 'unknown')}",
+            f"score:{reputation.get('risk_score', 0)}",
+            f"name_penalty:{name_penalty}",
+        ],
+    }
+
+    _file_reputation_analysis_history.append(record)
+    if len(_file_reputation_analysis_history) > 2000:
+        del _file_reputation_analysis_history[:-2000]
+
+    return {
+        "analysis": record,
+        "intel": reputation,
+        "history_size": len(_file_reputation_analysis_history),
     }
 
 

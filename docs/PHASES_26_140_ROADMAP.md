@@ -298,18 +298,30 @@ Capabilities:
 - East-west movement signal correlation with identity and command risk
 - Persistent lateral movement alert generation and retrieval
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 54 - MITRE ATTACK Mapping
+
+Endpoints:
 - `GET /threat/mitre`
 - `GET /threat/mitre/{technique}`
 - `GET /threat/mitre/mapping`
 
+Capabilities:
+- ATT&CK tactic and technique coverage from telemetry signal mapping
+- Technique-level evidence retrieval for correlation pipelines
+
 ### Phase 55 - File Reputation Engine
+
+Endpoints:
 - `GET /file/reputation/{hash}`
 - `POST /file/reputation/analyze`
+
+Capabilities:
+- Consolidated hash and malware intelligence reputation decisioning
+- Metadata-aware reputation scoring and analysis history retention
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 56 - Suspicious Script Detection
 - `GET /scripts/detected`

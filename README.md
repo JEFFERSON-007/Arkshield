@@ -95,7 +95,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /behavior/baseline` + `POST /behavior/baseline/train` + `GET /behavior/anomalies` (Phase 51): Baseline training from telemetry and anomaly drift detection.
 - `GET /commands/history` + `GET /commands/suspicious` + `POST /commands/block/{command}` (Phase 52): Suspicious command telemetry, rule-based detection, and command block policy actions.
 - `GET /network/lateral-movement` + `GET /network/lateral-alerts` (Phase 53): Lateral movement risk correlation and alert tracking.
-- Phases 54-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /threat/mitre` + `GET /threat/mitre/{technique}` + `GET /threat/mitre/mapping` (Phase 54): ATT&CK technique mapping and tactic coverage from live telemetry correlations.
+- `GET /file/reputation/{hash}` + `POST /file/reputation/analyze` (Phase 55): Consolidated file reputation with hash intel and metadata-driven risk adjustment.
+- Phases 56-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

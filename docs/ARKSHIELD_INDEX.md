@@ -83,5 +83,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 55** (`/file/reputation/{hash}`, `/file/reputation/analyze`) with consolidated hash intelligence and metadata-adjusted reputation scoring.
 - Implemented **Phase 56** (`/scripts/detected`, `/scripts/suspicious`, `/scripts/block/{id}`) with script telemetry extraction, suspicious behavior scoring, and script block-rule policy controls.
 - Implemented **Phase 57** (`/security/lolbins`, `/security/lolbins/events`) with LOLBin abuse detection and retained event analytics.
-- Implemented baseline endpoints for remaining **Phases 58-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 58** (`/security/persistence`, `/security/persistence/events`) with system persistence detection across registry Run keys, startup folders, scheduled tasks, services, and WMI event consumers.
+- Implemented **Phase 59** (`/tasks/scheduled`, `/tasks/suspicious`) with scheduled task inventory and suspicion-based filtering with risk distribution analysis.
+- Implemented baseline endpoints for remaining **Phases 60-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

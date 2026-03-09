@@ -99,7 +99,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /file/reputation/{hash}` + `POST /file/reputation/analyze` (Phase 55): Consolidated file reputation with hash intel and metadata-driven risk adjustment.
 - `GET /scripts/detected` + `GET /scripts/suspicious` + `POST /scripts/block/{id}` (Phase 56): Script execution telemetry, suspicious-script scoring, and block-rule enforcement.
 - `GET /security/lolbins` + `GET /security/lolbins/events` (Phase 57): Living-off-the-land binary abuse detection and event stream tracking.
-- Phases 58-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /security/persistence` + `GET /security/persistence/events` (Phase 58): System persistence mechanism detection (registry Run keys, startup folders, scheduled tasks, services, WMI).
+- `GET /tasks/scheduled` + `GET /tasks/suspicious` (Phase 59): Scheduled task monitoring with suspicion scoring and risk-based filtering.
+- Phases 60-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

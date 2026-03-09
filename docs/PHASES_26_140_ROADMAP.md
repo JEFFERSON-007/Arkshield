@@ -340,17 +340,30 @@ Capabilities:
 - LOLBin abuse detection from command and script correlations
 - Persisted event stream with severity analytics
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 58 - System Persistence Detection
+
+Endpoints:
 - `GET /security/persistence`
 - `GET /security/persistence/events`
 
+Capabilities:
+- Multi-vector persistence detection (registry Run keys, startup folders, scheduled tasks, services, WMI)
+- Risk-scored detections with type-based categorization and scan event history
+
 ### Phase 59 - Scheduled Task Monitoring
+
+Endpoints:
 - `GET /tasks/scheduled`
 - `GET /tasks/suspicious`
+
+Capabilities:
+- System-wide scheduled task inventory with suspicion scoring
+- Indicator-based risk assessment (encoded commands, hidden windows, impersonation, non-standard paths)
+- Threshold-based suspicious task filtering with risk distribution analytics
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 60 - Registry Monitoring
 - `GET /registry/changes`

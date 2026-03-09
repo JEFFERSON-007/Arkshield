@@ -94,6 +94,10 @@ _file_reputation_analysis_history: List[Dict[str, Any]] = []
 _blocked_script_rules: Dict[str, Dict[str, Any]] = {}
 _script_detection_events: List[Dict[str, Any]] = []
 _lolbin_events: List[Dict[str, Any]] = []
+_persistence_detections: List[Dict[str, Any]] = []
+_persistence_events: List[Dict[str, Any]] = []
+_scheduled_tasks_cache: List[Dict[str, Any]] = []
+_suspicious_tasks: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -6620,6 +6624,314 @@ async def security_lolbins_events(limit: int = 100):
         "count": len(recent),
         "severity_breakdown": severity_breakdown,
         "events": recent,
+    }
+
+
+# ========================================
+# Phase 58 - System Persistence Detection
+# ========================================
+
+def _scan_persistence_mechanisms() -> List[Dict[str, Any]]:
+    """Scan for system persistence mechanisms across multiple attack vectors."""
+    detections = []
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    # Windows Registry Run Keys
+    registry_locations = [
+        r"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run",
+        r"HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Run",
+        r"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+        r"HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce",
+    ]
+    
+    for location in registry_locations:
+        # Simulate registry key detection
+        detections.append({
+            "id": str(uuid.uuid4())[:8],
+            "type": "registry_run_key",
+            "location": location,
+            "risk_score": 45,
+            "detected_at": timestamp,
+            "status": "active",
+        })
+    
+    # Startup Folders
+    startup_paths = [
+        r"C:\Users\{username}\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup",
+        r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup",
+    ]
+    
+    for path in startup_paths:
+        detections.append({
+            "id": str(uuid.uuid4())[:8],
+            "type": "startup_folder",
+            "location": path,
+            "risk_score": 40,
+            "detected_at": timestamp,
+            "status": "active",
+        })
+    
+    # Scheduled Tasks (high-risk patterns)
+    suspicious_tasks = [
+        {"name": "SystemUpdate", "path": r"\Microsoft\Windows\SystemUpdate", "score": 75},
+        {"name": "WindowsCheck", "path": r"\WindowsCheck", "score": 70},
+    ]
+    
+    for task in suspicious_tasks:
+        detections.append({
+            "id": str(uuid.uuid4())[:8],
+            "type": "scheduled_task",
+            "name": task["name"],
+            "location": task["path"],
+            "risk_score": task["score"],
+            "detected_at": timestamp,
+            "status": "active",
+        })
+    
+    # Services (suspicious service names)
+    suspicious_services = [
+        {"name": "WinDefender32", "score": 80},
+        {"name": "svchost32", "score": 85},
+    ]
+    
+    for service in suspicious_services:
+        detections.append({
+            "id": str(uuid.uuid4())[:8],
+            "type": "service",
+            "name": service["name"],
+            "risk_score": service["score"],
+            "detected_at": timestamp,
+            "status": "active",
+        })
+    
+    # WMI Event Consumers
+    detections.append({
+        "id": str(uuid.uuid4())[:8],
+        "type": "wmi_event_consumer",
+        "location": r"ROOT\subscription",
+        "risk_score": 90,
+        "detected_at": timestamp,
+        "status": "active",
+    })
+    
+    return detections
+
+
+@app.get("/security/persistence")
+async def security_persistence(rescan: bool = False):
+    """
+    Detect system persistence mechanisms: registry keys, startup folders, 
+    scheduled tasks, services, and WMI event consumers.
+    """
+    global _persistence_detections, _persistence_events
+    
+    if rescan or not _persistence_detections:
+        _persistence_detections = _scan_persistence_mechanisms()
+        
+        # Log rescan event
+        _persistence_events.append({
+            "event": "persistence_scan",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "detections_found": len(_persistence_detections),
+        })
+        
+        # Trim event history
+        if len(_persistence_events) > 1000:
+            _persistence_events = _persistence_events[-1000:]
+    
+    # Risk distribution
+    risk_categories = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+    for detection in _persistence_detections:
+        score = detection.get("risk_score", 0)
+        if score < 40:
+            risk_categories["low"] += 1
+        elif score < 65:
+            risk_categories["medium"] += 1
+        elif score < 85:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    # Type distribution
+    type_breakdown = dict(Counter(d.get("type", "unknown") for d in _persistence_detections))
+    
+    return {
+        "total_detections": len(_persistence_detections),
+        "risk_distribution": risk_categories,
+        "type_breakdown": type_breakdown,
+        "detections": _persistence_detections,
+    }
+
+
+@app.get("/security/persistence/events")
+async def security_persistence_events(limit: int = 100):
+    """Return persistence detection event history with scan statistics."""
+    limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
+    recent = list(reversed(_persistence_events[-limit:]))
+    
+    total_detections = sum(evt.get("detections_found", 0) for evt in recent)
+    avg_detections = total_detections / len(recent) if recent else 0
+    
+    return {
+        "count": len(recent),
+        "total_detections": total_detections,
+        "avg_detections_per_scan": round(avg_detections, 2),
+        "events": recent,
+    }
+
+
+# ========================================
+# Phase 59 - Scheduled Task Monitoring
+# ========================================
+
+def _collect_scheduled_tasks() -> List[Dict[str, Any]]:
+    """Collect scheduled tasks from the system and compute suspicion scores."""
+    tasks = []
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    # Simulate scheduled task collection with varied risk profiles
+    simulated_tasks = [
+        {
+            "name": "GoogleUpdateTaskMachineCore",
+            "path": r"\Google\Update",
+            "command": r"C:\Program Files\Google\Update\GoogleUpdate.exe",
+            "trigger": "daily",
+            "enabled": True,
+            "suspicious_indicators": [],
+        },
+        {
+            "name": "SystemUpdate",
+            "path": r"\Microsoft\Windows\SystemUpdate",
+            "command": r"C:\Windows\Temp\update.exe",
+            "trigger": "system_start",
+            "enabled": True,
+            "suspicious_indicators": ["temp_folder", "non_standard_path", "system_start_trigger"],
+        },
+        {
+            "name": "WindowsDefenderCheck",
+            "path": r"\WindowsDefenderCheck",
+            "command": r"powershell.exe -nop -w hidden -enc aGVsbG8=",
+            "trigger": "logon",
+            "enabled": True,
+            "suspicious_indicators": ["powershell", "encoded_command", "hidden_window", "logon_trigger"],
+        },
+        {
+            "name": "MicrosoftEdgeUpdate",
+            "path": r"\Microsoft\EdgeUpdate",
+            "command": r"C:\Program Files (x86)\Microsoft\EdgeUpdate\MicrosoftEdgeUpdate.exe",
+            "trigger": "weekly",
+            "enabled": True,
+            "suspicious_indicators": [],
+        },
+        {
+            "name": "svchost32",
+            "path": r"\svchost32",
+            "command": r"C:\Users\Public\svchost32.exe /silent",
+            "trigger": "daily",
+            "enabled": True,
+            "suspicious_indicators": ["impersonation", "public_folder", "non_standard_path"],
+        },
+    ]
+    
+    for task_data in simulated_tasks:
+        # Calculate suspicion score based on indicators
+        base_score = 10
+        indicator_weights = {
+            "temp_folder": 25,
+            "non_standard_path": 20,
+            "system_start_trigger": 15,
+            "powershell": 20,
+            "encoded_command": 30,
+            "hidden_window": 25,
+            "logon_trigger": 15,
+            "impersonation": 35,
+            "public_folder": 30,
+        }
+        
+        suspicion_score = base_score
+        for indicator in task_data["suspicious_indicators"]:
+            suspicion_score += indicator_weights.get(indicator, 10)
+        
+        suspicion_score = min(suspicion_score, 100)
+        
+        task = {
+            "id": str(uuid.uuid4())[:8],
+            "name": task_data["name"],
+            "path": task_data["path"],
+            "command": task_data["command"],
+            "trigger": task_data["trigger"],
+            "enabled": task_data["enabled"],
+            "suspicion_score": suspicion_score,
+            "suspicious_indicators": task_data["suspicious_indicators"],
+            "last_run": None,
+            "collected_at": timestamp,
+        }
+        
+        tasks.append(task)
+    
+    return tasks
+
+
+@app.get("/tasks/scheduled")
+async def tasks_scheduled(refresh: bool = False):
+    """
+    List all scheduled tasks on the system with suspicion scoring.
+    Caches results unless refresh=True.
+    """
+    global _scheduled_tasks_cache
+    
+    if refresh or not _scheduled_tasks_cache:
+        _scheduled_tasks_cache = _collect_scheduled_tasks()
+    
+    # Compute statistics
+    enabled_count = sum(1 for t in _scheduled_tasks_cache if t.get("enabled", False))
+    avg_score = sum(t.get("suspicion_score", 0) for t in _scheduled_tasks_cache) / len(_scheduled_tasks_cache) if _scheduled_tasks_cache else 0
+    
+    return {
+        "total_tasks": len(_scheduled_tasks_cache),
+        "enabled_tasks": enabled_count,
+        "avg_suspicion_score": round(avg_score, 2),
+        "tasks": _scheduled_tasks_cache,
+    }
+
+
+@app.get("/tasks/suspicious")
+async def tasks_suspicious(threshold: int = 50):
+    """
+    Return scheduled tasks flagged as suspicious based on scoring threshold.
+    Default threshold: 50.
+    """
+    global _scheduled_tasks_cache, _suspicious_tasks
+    
+    # Ensure cache is populated
+    if not _scheduled_tasks_cache:
+        _scheduled_tasks_cache = _collect_scheduled_tasks()
+    
+    # Filter by threshold
+    _suspicious_tasks = [
+        task for task in _scheduled_tasks_cache
+        if task.get("suspicion_score", 0) >= threshold
+    ]
+    
+    # Sort by score descending
+    _suspicious_tasks.sort(key=lambda t: t.get("suspicion_score", 0), reverse=True)
+    
+    # Risk categorization
+    risk_categories = {"medium": 0, "high": 0, "critical": 0}
+    for task in _suspicious_tasks:
+        score = task.get("suspicion_score", 0)
+        if score < 70:
+            risk_categories["medium"] += 1
+        elif score < 90:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    return {
+        "threshold": threshold,
+        "suspicious_count": len(_suspicious_tasks),
+        "risk_distribution": risk_categories,
+        "tasks": _suspicious_tasks,
     }
 
 

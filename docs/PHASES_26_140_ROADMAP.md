@@ -177,17 +177,27 @@ Capabilities:
 - Docker security scanning
 - Container runtime monitoring
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
-
 ### Phase 42 - Kubernetes Security
+
+Endpoints:
 - `GET /kubernetes/cluster`
 - `GET /kubernetes/security`
 
+Capabilities:
+- Cluster security monitoring
+
 ### Phase 43 - Cloud Security Posture
+
+Endpoints:
 - `GET /cloud/posture`
 - `GET /cloud/misconfigurations`
+
+Capabilities:
+- Detect insecure cloud settings
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
 
 ### Phase 44 - Compliance Monitoring
 - `GET /compliance/status`

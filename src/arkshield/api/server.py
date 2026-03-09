@@ -46,6 +46,7 @@ _dns_blocked_domains: Dict[str, Dict[str, Any]] = {}
 _network_traffic_snapshots: List[Dict[str, Any]] = []
 _patch_recommendation_history: List[Dict[str, Any]] = []
 _container_scan_history: List[Dict[str, Any]] = []
+_cloud_posture_history: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -4820,6 +4821,253 @@ async def containers_scan():
     return {
         "scan": record,
         "history_count": len(_container_scan_history),
+    }
+
+
+# --- Phase 42: Kubernetes Security (Deep Implementation) ---
+
+@app.get("/kubernetes/cluster")
+async def kubernetes_cluster():
+    """Discover Kubernetes cluster context and workload summary when kubectl is available."""
+    kubectl = _resolve_first_command("kubectl")
+    if not kubectl:
+        return {
+            "available": False,
+            "cluster_connected": False,
+            "note": "kubectl not found on host",
+        }
+
+    context_res = _run_cmd([kubectl, "config", "current-context"], timeout=6)
+    version_res = _run_cmd([kubectl, "version", "--short"], timeout=8)
+    nodes_res = _run_cmd([kubectl, "get", "nodes", "--no-headers"], timeout=8)
+    pods_res = _run_cmd([kubectl, "get", "pods", "-A", "--no-headers"], timeout=10)
+
+    cluster_connected = bool(context_res.get("ok"))
+    node_count = len([ln for ln in (nodes_res.get("stdout") or "").splitlines() if ln.strip()]) if nodes_res.get("ok") else 0
+    pod_count = len([ln for ln in (pods_res.get("stdout") or "").splitlines() if ln.strip()]) if pods_res.get("ok") else 0
+
+    return {
+        "available": True,
+        "cluster_connected": cluster_connected,
+        "context": (context_res.get("stdout") or "").strip(),
+        "node_count": node_count,
+        "pod_count": pod_count,
+        "version": (version_res.get("stdout") or "").strip(),
+        "errors": {
+            "context": context_res.get("stderr", "") if not context_res.get("ok") else "",
+            "nodes": nodes_res.get("stderr", "") if not nodes_res.get("ok") else "",
+            "pods": pods_res.get("stderr", "") if not pods_res.get("ok") else "",
+        },
+    }
+
+
+@app.get("/kubernetes/security")
+async def kubernetes_security():
+    """Assess Kubernetes security posture using cluster metadata and workload flags."""
+    kubectl = _resolve_first_command("kubectl")
+    if not kubectl:
+        return {
+            "available": False,
+            "risk_score": 0,
+            "summary": "Kubernetes tooling unavailable",
+            "findings": [],
+        }
+
+    cluster = await kubernetes_cluster()
+    if not cluster.get("cluster_connected"):
+        return {
+            "available": True,
+            "risk_score": 70,
+            "summary": "kubectl available but cluster not reachable",
+            "findings": [
+                {"severity": "high", "issue": "Cluster connectivity missing", "evidence": cluster.get("errors", {})}
+            ],
+        }
+
+    findings: List[Dict[str, Any]] = []
+    risk = 0
+
+    # Check for containers running as privileged where possible.
+    priv_cmd = [
+        kubectl,
+        "get",
+        "pods",
+        "-A",
+        "-o",
+        "jsonpath={range .items[*]}{.metadata.namespace}/{.metadata.name}:{range .spec.containers[*]}{.securityContext.privileged}{","}{end}{"\n"}{end}",
+    ]
+    priv_res = _run_cmd(priv_cmd, timeout=12)
+    if priv_res.get("ok"):
+        for line in (priv_res.get("stdout") or "").splitlines():
+            if ":true" in line.lower() or ",true" in line.lower():
+                findings.append({
+                    "severity": "high",
+                    "issue": "Privileged container detected",
+                    "evidence": line.strip(),
+                })
+                risk += 20
+    else:
+        findings.append({
+            "severity": "medium",
+            "issue": "Could not inspect pod security context",
+            "evidence": priv_res.get("stderr") or "jsonpath query failed",
+        })
+        risk += 8
+
+    # Check namespaces count and system namespace health quickly.
+    ns_res = _run_cmd([kubectl, "get", "namespaces", "--no-headers"], timeout=8)
+    ns_count = len([ln for ln in (ns_res.get("stdout") or "").splitlines() if ln.strip()]) if ns_res.get("ok") else 0
+    if ns_count > 50:
+        findings.append({
+            "severity": "low",
+            "issue": "Large namespace footprint",
+            "evidence": f"{ns_count} namespaces",
+        })
+        risk += 5
+
+    # Check for potentially exposed services.
+    svc_res = _run_cmd([kubectl, "get", "svc", "-A", "--no-headers"], timeout=10)
+    if svc_res.get("ok"):
+        for line in (svc_res.get("stdout") or "").splitlines():
+            if "LoadBalancer" in line or "NodePort" in line:
+                findings.append({
+                    "severity": "medium",
+                    "issue": "Externally exposed service type",
+                    "evidence": line.strip(),
+                })
+                risk += 10
+
+    risk = min(100, risk)
+    summary = "good" if risk < 20 else "moderate" if risk < 50 else "high-risk"
+    return {
+        "available": True,
+        "risk_score": risk,
+        "summary": summary,
+        "cluster": {
+            "context": cluster.get("context", ""),
+            "node_count": cluster.get("node_count", 0),
+            "pod_count": cluster.get("pod_count", 0),
+            "namespace_count": ns_count,
+        },
+        "findings": findings,
+    }
+
+
+# --- Phase 43: Cloud Security Posture (Deep Implementation) ---
+
+@app.get("/cloud/posture")
+async def cloud_posture():
+    """Assess cloud security posture using local cloud CLI context and environment signals."""
+    aws = _resolve_first_command("aws")
+    az = _resolve_first_command("az")
+    gcloud = _resolve_first_command("gcloud")
+
+    providers = []
+    if aws:
+        providers.append("aws")
+    if az:
+        providers.append("azure")
+    if gcloud:
+        providers.append("gcp")
+
+    creds_signals = {
+        "aws_access_key_env": bool(os.environ.get("AWS_ACCESS_KEY_ID")),
+        "aws_secret_env": bool(os.environ.get("AWS_SECRET_ACCESS_KEY")),
+        "azure_client_id_env": bool(os.environ.get("AZURE_CLIENT_ID")),
+        "gcp_credentials_env": bool(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")),
+    }
+
+    findings: List[Dict[str, Any]] = []
+    risk = 0
+    if not providers:
+        findings.append({"severity": "low", "issue": "No cloud CLI detected", "evidence": "aws/az/gcloud unavailable"})
+    if creds_signals["aws_access_key_env"] and creds_signals["aws_secret_env"]:
+        findings.append({"severity": "medium", "issue": "AWS credentials present in environment", "evidence": "AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY"})
+        risk += 15
+    if creds_signals["gcp_credentials_env"]:
+        findings.append({"severity": "medium", "issue": "GCP credentials path exposed in environment", "evidence": "GOOGLE_APPLICATION_CREDENTIALS"})
+        risk += 10
+
+    accounts: Dict[str, Any] = {}
+    if aws:
+        whoami = _run_cmd([aws, "sts", "get-caller-identity", "--output", "json"], timeout=8)
+        accounts["aws"] = {"authenticated": whoami.get("ok", False), "detail": (whoami.get("stdout") or whoami.get("stderr") or "")[:400]}
+        if whoami.get("ok"):
+            risk += 5
+    if az:
+        az_acct = _run_cmd([az, "account", "show", "-o", "json"], timeout=8)
+        accounts["azure"] = {"authenticated": az_acct.get("ok", False), "detail": (az_acct.get("stdout") or az_acct.get("stderr") or "")[:400]}
+        if az_acct.get("ok"):
+            risk += 5
+    if gcloud:
+        gcp_acct = _run_cmd([gcloud, "auth", "list", "--format=value(account)"], timeout=8)
+        accounts["gcp"] = {"authenticated": gcp_acct.get("ok", False), "detail": (gcp_acct.get("stdout") or gcp_acct.get("stderr") or "")[:400]}
+        if gcp_acct.get("ok"):
+            risk += 5
+
+    score = max(0, min(100, 100 - risk))
+    posture = "strong" if score >= 80 else "moderate" if score >= 60 else "weak"
+
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "providers_detected": providers,
+        "posture_score": score,
+        "posture": posture,
+        "credential_signals": creds_signals,
+        "accounts": accounts,
+        "findings": findings,
+    }
+    _cloud_posture_history.append(record)
+    if len(_cloud_posture_history) > 500:
+        del _cloud_posture_history[:-500]
+
+    return record
+
+
+@app.get("/cloud/misconfigurations")
+async def cloud_misconfigurations():
+    """Return likely cloud misconfiguration findings derived from posture and auth signals."""
+    posture = await cloud_posture()
+    findings: List[Dict[str, Any]] = []
+
+    providers = posture.get("providers_detected", [])
+    creds = posture.get("credential_signals", {})
+    accounts = posture.get("accounts", {})
+
+    if "aws" in providers and creds.get("aws_access_key_env"):
+        findings.append({
+            "provider": "aws",
+            "severity": "medium",
+            "issue": "Static AWS credentials in environment",
+            "recommendation": "Use IAM roles or short-lived credentials",
+        })
+    if "azure" in providers and not accounts.get("azure", {}).get("authenticated"):
+        findings.append({
+            "provider": "azure",
+            "severity": "low",
+            "issue": "Azure CLI present but unauthenticated",
+            "recommendation": "Validate intended auth context and tenant settings",
+        })
+    if "gcp" in providers and creds.get("gcp_credentials_env"):
+        findings.append({
+            "provider": "gcp",
+            "severity": "medium",
+            "issue": "Service account credentials path exposed",
+            "recommendation": "Restrict file access and rotate service account keys",
+        })
+    if not providers:
+        findings.append({
+            "provider": "none",
+            "severity": "info",
+            "issue": "No cloud provider context detected",
+            "recommendation": "Integrate CSPM checks if cloud workloads are used",
+        })
+
+    risk = min(100, sum(20 if f["severity"] == "medium" else 10 if f["severity"] == "low" else 0 for f in findings))
+    return {
+        "count": len(findings),
+        "risk_score": risk,
+        "misconfigurations": findings,
     }
 
 

@@ -83,7 +83,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /patch/status` + `GET /patch/vulnerabilities` + `POST /patch/recommendations` (Phase 39): Patch posture analysis, vulnerability signals, and prioritized remediation plans.
 - `GET /supply-chain/dependencies` + `GET /supply-chain/vulnerabilities` (Phase 40): Dependency inventory and heuristic supply-chain vulnerability detection.
 - `GET /containers` + `GET /containers/security` + `POST /containers/scan` (Phase 41): Container runtime inventory and security posture scans.
-- Phases 42-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /kubernetes/cluster` + `GET /kubernetes/security` (Phase 42): Kubernetes cluster discovery and workload security posture checks.
+- `GET /cloud/posture` + `GET /cloud/misconfigurations` (Phase 43): Cloud CLI-context posture analysis and misconfiguration detection.
+- Phases 44-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

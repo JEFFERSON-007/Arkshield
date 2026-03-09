@@ -67,5 +67,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 39** (`/patch/status`, `/patch/vulnerabilities`, `/patch/recommendations`) with patch intelligence and remediation planning.
 - Implemented **Phase 40** (`/supply-chain/dependencies`, `/supply-chain/vulnerabilities`) with dependency inventory and vulnerability heuristics.
 - Implemented **Phase 41** (`/containers`, `/containers/security`, `/containers/scan`) with runtime container visibility and security scans.
-- Implemented baseline endpoints for remaining **Phases 42-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 42** (`/kubernetes/cluster`, `/kubernetes/security`) with cluster visibility and Kubernetes posture checks.
+- Implemented **Phase 43** (`/cloud/posture`, `/cloud/misconfigurations`) with cloud context analysis and misconfiguration findings.
+- Implemented baseline endpoints for remaining **Phases 44-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

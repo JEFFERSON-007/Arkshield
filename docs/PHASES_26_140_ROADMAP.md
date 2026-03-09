@@ -51,7 +51,9 @@ Capabilities:
 - ML-style malware classification (heuristic runtime model)
 - Malware family detection
 
-## Planned Phases
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
 
 ### Phase 30 - Global Threat Intelligence
 - `GET /threat-intel/global`

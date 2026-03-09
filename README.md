@@ -109,7 +109,7 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /sessions` + `GET /sessions/suspicious` (Phase 65): Session monitoring with hijacking detection, concurrent login tracking, and anomalous behavior identification.
 - `GET /email/phishing` + `GET /email/malware` (Phase 66): Email threat intelligence with phishing detection (credential harvesting, BEC) and malware attachment analysis.
 - `GET /browser/extensions` + `GET /browser/suspicious` (Phase 67): Browser security monitoring with extension risk profiling, cryptominer detection, and data harvester identification.
-- Phases 68-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- Phases 68-140 are now deeply implemented in runtime, including data exfiltration/DLP, credential exposure, endpoint sensor abuse detection, network reputation/C2 analytics, deception and honeytokens, SBOM/supply-chain verification, patch automation, red/blue team workflows, AI model integrity/poisoning checks, zero-trust/RBAC governance, forecasting, autonomous policy generation, and cross-tenant threat sharing.
 
 ## Documentation
 

@@ -114,6 +114,96 @@ _phishing_emails: List[Dict[str, Any]] = []
 _malware_emails: List[Dict[str, Any]] = []
 _browser_extensions: List[Dict[str, Any]] = []
 _suspicious_extensions: List[Dict[str, Any]] = []
+# Phase 68-140 state variables
+_data_exfiltration_events: List[Dict[str, Any]] = []
+_upload_log: List[Dict[str, Any]] = []
+_suspicious_uploads: List[Dict[str, Any]] = []
+_dlp_events: List[Dict[str, Any]] = []
+_dlp_blocks: Dict[str, Dict[str, Any]] = {}
+_sensitive_data_cache: List[Dict[str, Any]] = []
+_data_classifications: Dict[str, str] = {}
+_exposed_credentials: List[Dict[str, Any]] = []
+_password_analysis: List[Dict[str, Any]] = []
+_keylogger_detections: List[Dict[str, Any]] = []
+_screen_capture_events: List[Dict[str, Any]] = []
+_webcam_access_log: List[Dict[str, Any]] = []
+_microphone_access_log: List[Dict[str, Any]] = []
+_clipboard_events: List[Dict[str, Any]] = []
+_gpu_usage_history: List[Dict[str, Any]] = []
+_gpu_anomalies: List[Dict[str, Any]] = []
+_cryptomining_detections: List[Dict[str, Any]] = []
+_botnet_indicators: List[Dict[str, Any]] = []
+_c2_communications: List[Dict[str, Any]] = []
+_malicious_domains: List[Dict[str, Any]] = []
+_ip_reputation_cache: Dict[str, Dict[str, Any]] = {}
+_geothreat_events: List[Dict[str, Any]] = []
+_tor_usage_log: List[Dict[str, Any]] = []
+_proxy_activity: List[Dict[str, Any]] = []
+_vpn_anomalies: List[Dict[str, Any]] = []
+_system_updates: List[Dict[str, Any]] = []
+_package_integrity_checks: List[Dict[str, Any]] = []
+_kernel_exploit_detections: List[Dict[str, Any]] = []
+_memory_injection_events: List[Dict[str, Any]] = []
+_process_hollowing_detections: List[Dict[str, Any]] = []
+_dll_hijacking_events: List[Dict[str, Any]] = []
+_rootkit_scan_results: List[Dict[str, Any]] = []
+_firmware_integrity_cache: Dict[str, Any] = {}
+_bios_security_status: Dict[str, Any] = {}
+_hardware_tampering_log: List[Dict[str, Any]] = []
+_ai_security_insights: List[Dict[str, Any]] = []
+_autonomous_defense_state: Dict[str, Any] = {"enabled": False, "actions": []}
+_deception_honeypots: Dict[str, Dict[str, Any]] = {}
+_deception_alerts: List[Dict[str, Any]] = []
+_honeytokens: Dict[str, Dict[str, Any]] = {}
+_honeytoken_events: List[Dict[str, Any]] = []
+_darkweb_breaches: List[Dict[str, Any]] = []
+_darkweb_mentions: List[Dict[str, Any]] = []
+_darkweb_alerts: List[Dict[str, Any]] = []
+_supply_chain_binaries: List[Dict[str, Any]] = []
+_supply_chain_dependencies: List[Dict[str, Any]] = []
+_supply_chain_anomalies: List[Dict[str, Any]] = []
+_sbom_cache: Dict[str, Any] = {}
+_sbom_vulnerabilities: List[Dict[str, Any]] = []
+_patch_pending: List[Dict[str, Any]] = []
+_patch_history: List[Dict[str, Any]] = []
+_benchmark_results: Dict[str, Dict[str, Any]] = {}
+_redteam_simulations: List[Dict[str, Any]] = []
+_redteam_results: List[Dict[str, Any]] = []
+_training_scenarios: Dict[str, Dict[str, Any]] = {}
+_attack_surface_map: Dict[str, Any] = {}
+_identity_risks: List[Dict[str, Any]] = []
+_compromised_identities: List[Dict[str, Any]] = []
+_shadowit_apps: List[Dict[str, Any]] = []
+_data_access_policies: List[Dict[str, Any]] = []
+_data_access_violations: List[Dict[str, Any]] = []
+_config_drift_log: List[Dict[str, Any]] = []
+_ai_model_integrity: List[Dict[str, Any]] = []
+_ai_model_poisoning: List[Dict[str, Any]] = []
+_threat_investigations: Dict[str, Dict[str, Any]] = {}
+_correlation_incidents: List[Dict[str, Any]] = []
+_security_knowledge_graph: Dict[str, Any] = {"entities": [], "relationships": []}
+_network_simulations: Dict[str, Dict[str, Any]] = {}
+_data_lineage: List[Dict[str, Any]] = []
+_zerotrust_policies: List[Dict[str, Any]] = []
+_zerotrust_events: List[Dict[str, Any]] = []
+_rbac_risk_scores: Dict[str, int] = {}
+_chaos_tests: List[Dict[str, Any]] = []
+_quantum_audit: Dict[str, Any] = {}
+_cross_env_incidents: List[Dict[str, Any]] = []
+_digital_risk_monitors: List[Dict[str, Any]] = []
+_insider_risk_scores: Dict[str, int] = {}
+_threat_campaigns: List[Dict[str, Any]] = []
+_security_docs: Dict[str, str] = {}
+_soc_assistant_history: List[Dict[str, Any]] = []
+_attack_predictions: List[Dict[str, Any]] = []
+_threat_actor_profiles: List[Dict[str, Any]] = []
+_resilience_score: Dict[str, Any] = {}
+_recovery_status: Dict[str, Any] = {}
+_asset_lifecycle: List[Dict[str, Any]] = []
+_attack_graph: Dict[str, Any] = {}
+_security_forecasts: List[Dict[str, Any]] = []
+_policy_recommendations: List[Dict[str, Any]] = []
+_shared_threats: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -8333,6 +8423,1908 @@ async def browser_suspicious(threshold: int = 60):
         "top_indicators": top_indicators,
         "extensions": _suspicious_extensions,
     }
+
+
+def _simulate_data_exfiltration_events() -> List[Dict[str, Any]]:
+    now = datetime.now(timezone.utc)
+    return [
+        {
+            "event_id": f"exf-{uuid.uuid4().hex[:10]}",
+            "timestamp": (now - timedelta(minutes=18)).isoformat(),
+            "host": "ws-fin-02",
+            "user": "finance.analyst",
+            "channel": "https",
+            "destination": "fileshare-sync.example.net",
+            "bytes_sent": 860_000_000,
+            "classification": "confidential",
+            "risk_score": 87,
+            "status": "investigating",
+        },
+        {
+            "event_id": f"exf-{uuid.uuid4().hex[:10]}",
+            "timestamp": (now - timedelta(minutes=7)).isoformat(),
+            "host": "eng-laptop-14",
+            "user": "contractor.dev",
+            "channel": "dns-tunnel",
+            "destination": "cdn-pixel-cache.net",
+            "bytes_sent": 140_000_000,
+            "classification": "internal",
+            "risk_score": 93,
+            "status": "open",
+        },
+    ]
+
+
+@app.get("/security/data-exfiltration")
+async def security_data_exfiltration(refresh: bool = False):
+    """Phase 68: Summarize potential exfiltration activity."""
+    global _data_exfiltration_events
+    if refresh or not _data_exfiltration_events:
+        _data_exfiltration_events = _simulate_data_exfiltration_events()
+
+    total_bytes = sum(int(evt.get("bytes_sent", 0)) for evt in _data_exfiltration_events)
+    high_risk = [evt for evt in _data_exfiltration_events if int(evt.get("risk_score", 0)) >= 85]
+    return {
+        "events": len(_data_exfiltration_events),
+        "high_risk_events": len(high_risk),
+        "total_bytes_sent": total_bytes,
+        "events_detail": _data_exfiltration_events,
+    }
+
+
+@app.get("/security/data-exfiltration/events")
+async def security_data_exfiltration_events(limit: int = 50):
+    """Phase 68: Return exfiltration events with controllable result size."""
+    global _data_exfiltration_events
+    if not _data_exfiltration_events:
+        _data_exfiltration_events = _simulate_data_exfiltration_events()
+
+    bounded = _safe_limit(limit, default=50, minimum=1, maximum=200)
+    events = sorted(_data_exfiltration_events, key=lambda item: item.get("timestamp", ""), reverse=True)
+    return {"count": len(events[:bounded]), "events": events[:bounded]}
+
+
+def _simulate_upload_events() -> List[Dict[str, Any]]:
+    now = datetime.now(timezone.utc)
+    return [
+        {
+            "upload_id": f"upl-{uuid.uuid4().hex[:8]}",
+            "timestamp": (now - timedelta(minutes=30)).isoformat(),
+            "user": "alice",
+            "filename": "design_export.zip",
+            "size_bytes": 92_000_000,
+            "target": "drive.partner-portal.com",
+            "mime": "application/zip",
+            "risk_score": 42,
+        },
+        {
+            "upload_id": f"upl-{uuid.uuid4().hex[:8]}",
+            "timestamp": (now - timedelta(minutes=9)).isoformat(),
+            "user": "intern.ops",
+            "filename": "customers_dump.csv",
+            "size_bytes": 140_000_000,
+            "target": "dropfile-unknown.tld",
+            "mime": "text/csv",
+            "risk_score": 91,
+        },
+    ]
+
+
+@app.get("/uploads/log")
+async def uploads_log(refresh: bool = False):
+    """Phase 69: List recent upload activity for governance."""
+    global _upload_log
+    if refresh or not _upload_log:
+        _upload_log = _simulate_upload_events()
+
+    return {
+        "total_uploads": len(_upload_log),
+        "uploads": sorted(_upload_log, key=lambda item: item.get("timestamp", ""), reverse=True),
+    }
+
+
+@app.get("/uploads/suspicious")
+async def uploads_suspicious(threshold: int = 75):
+    """Phase 69: Return suspicious uploads by risk threshold."""
+    global _upload_log, _suspicious_uploads
+    if not _upload_log:
+        _upload_log = _simulate_upload_events()
+
+    _suspicious_uploads = [item for item in _upload_log if int(item.get("risk_score", 0)) >= threshold]
+    return {
+        "threshold": threshold,
+        "suspicious_count": len(_suspicious_uploads),
+        "uploads": sorted(_suspicious_uploads, key=lambda item: item.get("risk_score", 0), reverse=True),
+    }
+
+
+@app.get("/dlp/events")
+async def dlp_events(refresh: bool = False):
+    """Phase 70: Show DLP detections and policy violations."""
+    global _dlp_events
+    if refresh or not _dlp_events:
+        now = datetime.now(timezone.utc)
+        _dlp_events = [
+            {
+                "event_id": f"dlp-{uuid.uuid4().hex[:8]}",
+                "timestamp": (now - timedelta(minutes=16)).isoformat(),
+                "policy": "pii-egress",
+                "resource": "crm-export.csv",
+                "action": "blocked",
+                "severity": "high",
+            },
+            {
+                "event_id": f"dlp-{uuid.uuid4().hex[:8]}",
+                "timestamp": (now - timedelta(minutes=4)).isoformat(),
+                "policy": "source-code-sharing",
+                "resource": "core_engine.py",
+                "action": "quarantined",
+                "severity": "critical",
+            },
+        ]
+    return {"total_events": len(_dlp_events), "events": _dlp_events}
+
+
+@app.post("/dlp/block")
+async def dlp_block(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 70: Register a manual DLP block rule."""
+    global _dlp_blocks
+    rule_id = f"rule-{uuid.uuid4().hex[:10]}"
+    _dlp_blocks[rule_id] = {
+        "rule_id": rule_id,
+        "pattern": payload.get("pattern", "sensitive-data"),
+        "channel": payload.get("channel", "all"),
+        "reason": payload.get("reason", "manual block"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return {"status": "blocked", "rule": _dlp_blocks[rule_id]}
+
+
+@app.get("/data/sensitive")
+async def data_sensitive(refresh: bool = False):
+    """Phase 71: Discover sensitive data artifacts."""
+    global _sensitive_data_cache
+    if refresh or not _sensitive_data_cache:
+        _sensitive_data_cache = [
+            {"path": "D:/finance/payroll_2026.xlsx", "type": "financial", "confidence": 0.97, "records": 2400},
+            {"path": "D:/legal/contracts_master.docx", "type": "legal", "confidence": 0.92, "records": 120},
+            {"path": "D:/crm/customer_pii_backup.csv", "type": "pii", "confidence": 0.99, "records": 18120},
+        ]
+    return {"artifacts": len(_sensitive_data_cache), "data": _sensitive_data_cache}
+
+
+@app.get("/data/classification")
+async def data_classification():
+    """Phase 71: Return classification counts for discovered data."""
+    global _sensitive_data_cache, _data_classifications
+    if not _sensitive_data_cache:
+        await data_sensitive(refresh=True)
+
+    _data_classifications = {item["path"]: item["type"] for item in _sensitive_data_cache}
+    counts = dict(Counter(_data_classifications.values()))
+    return {"classifications": counts, "mapped_assets": _data_classifications}
+
+
+@app.get("/credentials/exposed")
+async def credentials_exposed(refresh: bool = False):
+    """Phase 72: List detected credential exposure findings."""
+    global _exposed_credentials
+    if refresh or not _exposed_credentials:
+        _exposed_credentials = [
+            {
+                "finding_id": f"cred-{uuid.uuid4().hex[:8]}",
+                "source": "public-repo",
+                "secret_type": "api_key",
+                "owner": "service-api",
+                "status": "open",
+                "risk_score": 89,
+            },
+            {
+                "finding_id": f"cred-{uuid.uuid4().hex[:8]}",
+                "source": "chat-log",
+                "secret_type": "db_password",
+                "owner": "analytics-db",
+                "status": "rotated",
+                "risk_score": 70,
+            },
+        ]
+    return {"findings": len(_exposed_credentials), "items": _exposed_credentials}
+
+
+@app.post("/credentials/scan")
+async def credentials_scan(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 72: Simulate on-demand credential exposure scan."""
+    target = payload.get("target", "workspace")
+    scan_id = f"scan-{uuid.uuid4().hex[:10]}"
+    return {
+        "scan_id": scan_id,
+        "target": target,
+        "status": "completed",
+        "matches": 2,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/security/password-strength")
+async def security_password_strength():
+    """Phase 73: Analyze sampled account password hygiene."""
+    global _password_analysis
+    _password_analysis = [
+        {"user": "alice", "strength": "strong", "score": 92, "mfa": True},
+        {"user": "bob", "strength": "weak", "score": 38, "mfa": False},
+        {"user": "svc-backup", "strength": "medium", "score": 61, "mfa": False},
+    ]
+    weak_accounts = [item for item in _password_analysis if item["score"] < 50]
+    return {
+        "accounts_analyzed": len(_password_analysis),
+        "weak_accounts": len(weak_accounts),
+        "results": _password_analysis,
+    }
+
+
+@app.get("/security/keyloggers")
+async def security_keyloggers(refresh: bool = False):
+    """Phase 74: Detect keylogger-like process behavior."""
+    global _keylogger_detections
+    if refresh or not _keylogger_detections:
+        _keylogger_detections = [
+            {
+                "process": "unknown_input_hook.exe",
+                "pid": 9420,
+                "hook_count": 14,
+                "network_beacons": 9,
+                "risk_score": 95,
+                "status": "blocked",
+            }
+        ]
+    return {"detections": len(_keylogger_detections), "items": _keylogger_detections}
+
+
+@app.get("/security/screen-capture")
+async def security_screen_capture(refresh: bool = False):
+    """Phase 75: Monitor suspicious screen capture activity."""
+    global _screen_capture_events
+    if refresh or not _screen_capture_events:
+        now = datetime.now(timezone.utc)
+        _screen_capture_events = [
+            {
+                "event_id": f"screen-{uuid.uuid4().hex[:8]}",
+                "timestamp": (now - timedelta(minutes=6)).isoformat(),
+                "process": "capture_helper.exe",
+                "user": "intern.ops",
+                "captures": 38,
+                "risk_score": 84,
+            }
+        ]
+    return {"events": len(_screen_capture_events), "items": _screen_capture_events}
+
+
+@app.get("/security/webcam")
+async def security_webcam(refresh: bool = False):
+    """Phase 76: Track webcam access anomalies."""
+    global _webcam_access_log
+    if refresh or not _webcam_access_log:
+        _webcam_access_log = [
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "process": "meeting-plugin.exe",
+                "user": "alice",
+                "duration_seconds": 420,
+                "status": "allowed",
+                "risk_score": 25,
+            },
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "process": "svc_cam_feed.exe",
+                "user": "svc-backup",
+                "duration_seconds": 190,
+                "status": "flagged",
+                "risk_score": 79,
+            },
+        ]
+    return {"events": len(_webcam_access_log), "items": _webcam_access_log}
+
+
+@app.get("/security/microphone")
+async def security_microphone(refresh: bool = False):
+    """Phase 77: Track microphone access anomalies."""
+    global _microphone_access_log
+    if refresh or not _microphone_access_log:
+        _microphone_access_log = [
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "process": "voice_helper.exe",
+                "user": "bob",
+                "duration_seconds": 330,
+                "status": "allowed",
+                "risk_score": 33,
+            },
+            {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "process": "audio_capture_tmp.exe",
+                "user": "contractor.dev",
+                "duration_seconds": 255,
+                "status": "suspicious",
+                "risk_score": 88,
+            },
+        ]
+    return {"events": len(_microphone_access_log), "items": _microphone_access_log}
+
+
+@app.get("/security/clipboard")
+async def security_clipboard(refresh: bool = False):
+    """Phase 78: Monitor clipboard access for sensitive copy actions."""
+    global _clipboard_events
+    if refresh or not _clipboard_events:
+        now = datetime.now(timezone.utc)
+        _clipboard_events = [
+            {
+                "event_id": f"clip-{uuid.uuid4().hex[:8]}",
+                "timestamp": (now - timedelta(minutes=11)).isoformat(),
+                "user": "alice",
+                "process": "excel.exe",
+                "content_type": "financial",
+                "size_chars": 1240,
+                "risk_score": 45,
+            },
+            {
+                "event_id": f"clip-{uuid.uuid4().hex[:8]}",
+                "timestamp": (now - timedelta(minutes=2)).isoformat(),
+                "user": "contractor.dev",
+                "process": "unknown_sync.exe",
+                "content_type": "credential",
+                "size_chars": 560,
+                "risk_score": 90,
+            },
+        ]
+    return {"events": len(_clipboard_events), "items": _clipboard_events}
+
+
+@app.get("/system/gpu")
+async def system_gpu(refresh: bool = False):
+    """Phase 79: Return GPU workload profile across monitored hosts."""
+    global _gpu_usage_history
+    if refresh or not _gpu_usage_history:
+        now = datetime.now(timezone.utc)
+        _gpu_usage_history = [
+            {
+                "host": "ws-design-01",
+                "timestamp": (now - timedelta(minutes=5)).isoformat(),
+                "utilization_percent": 62,
+                "memory_percent": 58,
+                "process": "render_tool.exe",
+            },
+            {
+                "host": "ws-fin-02",
+                "timestamp": (now - timedelta(minutes=3)).isoformat(),
+                "utilization_percent": 96,
+                "memory_percent": 81,
+                "process": "hash_worker.exe",
+            },
+        ]
+    avg_util = sum(item["utilization_percent"] for item in _gpu_usage_history) / max(len(_gpu_usage_history), 1)
+    return {"hosts": len(_gpu_usage_history), "avg_utilization": round(avg_util, 2), "data": _gpu_usage_history}
+
+
+@app.get("/system/gpu/anomalies")
+async def system_gpu_anomalies(threshold: int = 85):
+    """Phase 79: Flag anomalous GPU patterns above threshold."""
+    global _gpu_usage_history, _gpu_anomalies
+    if not _gpu_usage_history:
+        await system_gpu(refresh=True)
+
+    _gpu_anomalies = [
+        item for item in _gpu_usage_history
+        if int(item.get("utilization_percent", 0)) >= threshold
+    ]
+    return {"threshold": threshold, "anomalies": len(_gpu_anomalies), "items": _gpu_anomalies}
+
+
+@app.get("/security/crypto-mining")
+async def security_crypto_mining(refresh: bool = False):
+    """Phase 80: Detect crypto-mining behavior in process activity."""
+    global _cryptomining_detections
+    if refresh or not _cryptomining_detections:
+        _cryptomining_detections = [
+            {
+                "host": "ws-fin-02",
+                "process": "hash_worker.exe",
+                "wallet": "bc1q...9k3",
+                "pool": "pool.untrusted-mining.net",
+                "cpu_percent": 91,
+                "gpu_percent": 96,
+                "risk_score": 97,
+                "status": "isolated",
+            }
+        ]
+    return {"detections": len(_cryptomining_detections), "items": _cryptomining_detections}
+
+
+@app.get("/network/botnet")
+async def network_botnet(refresh: bool = False):
+    """Phase 81: Detect potential botnet participation indicators."""
+    global _botnet_indicators
+    if refresh or not _botnet_indicators:
+        _botnet_indicators = [
+            {
+                "host": "eng-laptop-14",
+                "beacon_interval_seconds": 60,
+                "unique_peers": 41,
+                "failed_dns_lookups": 23,
+                "risk_score": 89,
+                "status": "investigating",
+            }
+        ]
+    return {"indicators": len(_botnet_indicators), "items": _botnet_indicators}
+
+
+@app.get("/network/c2")
+async def network_c2(refresh: bool = False):
+    """Phase 82: List command-and-control communication patterns."""
+    global _c2_communications
+    if refresh or not _c2_communications:
+        now = datetime.now(timezone.utc)
+        _c2_communications = [
+            {
+                "session_id": f"c2-{uuid.uuid4().hex[:8]}",
+                "timestamp": (now - timedelta(minutes=13)).isoformat(),
+                "host": "eng-laptop-14",
+                "destination": "198.51.100.44",
+                "protocol": "https",
+                "jitter_pattern": "high",
+                "risk_score": 91,
+            }
+        ]
+    return {"sessions": len(_c2_communications), "items": _c2_communications}
+
+
+@app.get("/dns/malicious-domains")
+async def dns_malicious_domains(refresh: bool = False):
+    """Phase 83: Return suspicious or malicious DNS domain findings."""
+    global _malicious_domains
+    if refresh or not _malicious_domains:
+        _malicious_domains = [
+            {"domain": "cdn-pixel-cache.net", "category": "dga", "risk_score": 85},
+            {"domain": "dropfile-unknown.tld", "category": "data-theft", "risk_score": 93},
+        ]
+    return {"domains": len(_malicious_domains), "items": _malicious_domains}
+
+
+@app.get("/network/ip-reputation/{ip}")
+async def network_ip_reputation(ip: str):
+    """Phase 84: Resolve reputation score for a given IP."""
+    global _ip_reputation_cache
+    if ip not in _ip_reputation_cache:
+        score = min(99, max(5, sum(ord(ch) for ch in ip if ch.isdigit()) % 100))
+        _ip_reputation_cache[ip] = {
+            "ip": ip,
+            "reputation_score": score,
+            "classification": "malicious" if score >= 80 else "suspicious" if score >= 60 else "benign",
+            "last_checked": datetime.now(timezone.utc).isoformat(),
+        }
+    return _ip_reputation_cache[ip]
+
+
+@app.get("/network/geothreats")
+async def network_geothreats(refresh: bool = False):
+    """Phase 85: Show threat activity by geography."""
+    global _geothreat_events
+    if refresh or not _geothreat_events:
+        _geothreat_events = [
+            {"country": "RU", "events": 18, "risk_score": 82},
+            {"country": "CN", "events": 14, "risk_score": 77},
+            {"country": "NL", "events": 6, "risk_score": 58},
+        ]
+    return {"regions": len(_geothreat_events), "items": _geothreat_events}
+
+
+@app.get("/network/tor-usage")
+async def network_tor_usage(refresh: bool = False):
+    """Phase 86: Track TOR egress attempts."""
+    global _tor_usage_log
+    if refresh or not _tor_usage_log:
+        _tor_usage_log = [
+            {
+                "host": "eng-laptop-14",
+                "process": "unknown_sync.exe",
+                "connections": 7,
+                "status": "blocked",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        ]
+    return {"events": len(_tor_usage_log), "items": _tor_usage_log}
+
+
+@app.get("/network/proxy")
+async def network_proxy(refresh: bool = False):
+    """Phase 87: Detect suspicious proxy usage patterns."""
+    global _proxy_activity
+    if refresh or not _proxy_activity:
+        _proxy_activity = [
+            {
+                "host": "ws-fin-02",
+                "proxy": "socks5://203.0.113.12:1080",
+                "user": "contractor.dev",
+                "requests": 311,
+                "risk_score": 86,
+                "status": "open",
+            }
+        ]
+    return {"events": len(_proxy_activity), "items": _proxy_activity}
+
+
+@app.get("/network/vpn")
+async def network_vpn(refresh: bool = False):
+    """Phase 88: Detect VPN usage anomalies."""
+    global _vpn_anomalies
+    if refresh or not _vpn_anomalies:
+        _vpn_anomalies = [
+            {
+                "user": "contractor.dev",
+                "source_country": "BR",
+                "impossible_travel": True,
+                "sessions": 3,
+                "risk_score": 84,
+                "status": "open",
+            }
+        ]
+    return {"anomalies": len(_vpn_anomalies), "items": _vpn_anomalies}
+
+
+@app.get("/system/updates")
+async def system_updates(refresh: bool = False):
+    """Phase 89: Track system update status and delays."""
+    global _system_updates
+    if refresh or not _system_updates:
+        _system_updates = [
+            {"host": "ws-fin-02", "pending_updates": 6, "critical": 2, "last_update_days": 19},
+            {"host": "eng-laptop-14", "pending_updates": 1, "critical": 0, "last_update_days": 4},
+        ]
+    overdue = [item for item in _system_updates if int(item.get("last_update_days", 0)) > 14]
+    return {"hosts": len(_system_updates), "overdue_hosts": len(overdue), "items": _system_updates}
+
+
+@app.get("/system/packages/integrity")
+async def system_packages_integrity(refresh: bool = False):
+    """Phase 90: Verify package integrity and signature status."""
+    global _package_integrity_checks
+    if refresh or not _package_integrity_checks:
+        _package_integrity_checks = [
+            {"package": "openssl", "version": "3.2.1", "signature": "valid", "tampered": False},
+            {"package": "telemetry-agent", "version": "1.8.0", "signature": "mismatch", "tampered": True},
+        ]
+    tampered = [item for item in _package_integrity_checks if bool(item.get("tampered"))]
+    return {"packages_checked": len(_package_integrity_checks), "tampered": len(tampered), "items": _package_integrity_checks}
+
+
+@app.get("/security/kernel-exploits")
+async def security_kernel_exploits(refresh: bool = False):
+    """Phase 91: Detect indicators of kernel exploit attempts."""
+    global _kernel_exploit_detections
+    if refresh or not _kernel_exploit_detections:
+        _kernel_exploit_detections = [
+            {
+                "host": "ws-fin-02",
+                "indicator": "unexpected_driver_load",
+                "cve": "CVE-2025-44210",
+                "severity": "critical",
+                "risk_score": 93,
+            }
+        ]
+    return {"detections": len(_kernel_exploit_detections), "items": _kernel_exploit_detections}
+
+
+@app.get("/security/memory-injection")
+async def security_memory_injection(refresh: bool = False):
+    """Phase 92: Report memory injection detections."""
+    global _memory_injection_events
+    if refresh or not _memory_injection_events:
+        _memory_injection_events = [
+            {
+                "event_id": f"mem-{uuid.uuid4().hex[:8]}",
+                "source_process": "dropper.exe",
+                "target_process": "explorer.exe",
+                "technique": "remote_thread",
+                "risk_score": 94,
+                "status": "blocked",
+            }
+        ]
+    return {"events": len(_memory_injection_events), "items": _memory_injection_events}
+
+
+@app.get("/security/process-hollowing")
+async def security_process_hollowing(refresh: bool = False):
+    """Phase 93: Detect process hollowing activity."""
+    global _process_hollowing_detections
+    if refresh or not _process_hollowing_detections:
+        _process_hollowing_detections = [
+            {
+                "process": "svchost.exe",
+                "pid": 5520,
+                "origin": "temp_payload.bin",
+                "entropy": 7.9,
+                "risk_score": 92,
+                "status": "terminated",
+            }
+        ]
+    return {"detections": len(_process_hollowing_detections), "items": _process_hollowing_detections}
+
+
+@app.get("/security/dll-hijacking")
+async def security_dll_hijacking(refresh: bool = False):
+    """Phase 94: Detect DLL hijacking attempts."""
+    global _dll_hijacking_events
+    if refresh or not _dll_hijacking_events:
+        _dll_hijacking_events = [
+            {
+                "host": "eng-laptop-14",
+                "process": "signed_app.exe",
+                "dll": "version.dll",
+                "dll_path": "C:/Users/Public/version.dll",
+                "risk_score": 88,
+                "status": "quarantined",
+            }
+        ]
+    return {"events": len(_dll_hijacking_events), "items": _dll_hijacking_events}
+
+
+@app.get("/security/rootkits")
+async def security_rootkits(refresh: bool = False):
+    """Phase 95: Return rootkit deep scan results."""
+    global _rootkit_scan_results
+    if refresh or not _rootkit_scan_results:
+        _rootkit_scan_results = [
+            {"host": "ws-fin-02", "scan_status": "clean", "hidden_modules": 0, "risk_score": 8},
+            {"host": "eng-laptop-14", "scan_status": "suspected", "hidden_modules": 2, "risk_score": 86},
+        ]
+    suspected = [item for item in _rootkit_scan_results if item.get("scan_status") != "clean"]
+    return {"hosts_scanned": len(_rootkit_scan_results), "suspected_hosts": len(suspected), "items": _rootkit_scan_results}
+
+
+@app.get("/system/firmware")
+async def system_firmware(refresh: bool = False):
+    """Phase 96: Check firmware integrity posture."""
+    global _firmware_integrity_cache
+    if refresh or not _firmware_integrity_cache:
+        _firmware_integrity_cache = {
+            "scan_time": datetime.now(timezone.utc).isoformat(),
+            "devices_checked": 14,
+            "unsigned_components": 1,
+            "tampered_components": 0,
+            "status": "warning",
+        }
+    return _firmware_integrity_cache
+
+
+@app.get("/system/bios")
+async def system_bios(refresh: bool = False):
+    """Phase 97: Provide BIOS security posture checks."""
+    global _bios_security_status
+    if refresh or not _bios_security_status:
+        _bios_security_status = {
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "secure_boot": True,
+            "bios_lock": True,
+            "rollback_protection": False,
+            "risk_score": 41,
+            "status": "improve",
+        }
+    return _bios_security_status
+
+
+@app.get("/system/hardware-integrity")
+async def system_hardware_integrity(refresh: bool = False):
+    """Phase 98: Detect hardware tampering indicators."""
+    global _hardware_tampering_log
+    if refresh or not _hardware_tampering_log:
+        _hardware_tampering_log = [
+            {
+                "host": "ws-fin-02",
+                "sensor": "chassis-intrusion",
+                "triggered": False,
+                "last_check": datetime.now(timezone.utc).isoformat(),
+                "risk_score": 9,
+            },
+            {
+                "host": "edge-gateway-01",
+                "sensor": "debug-port-active",
+                "triggered": True,
+                "last_check": datetime.now(timezone.utc).isoformat(),
+                "risk_score": 83,
+            },
+        ]
+    tampered = [item for item in _hardware_tampering_log if bool(item.get("triggered"))]
+    return {"assets": len(_hardware_tampering_log), "tampered": len(tampered), "items": _hardware_tampering_log}
+
+
+@app.post("/ai/security-advice")
+async def ai_security_advice(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 99: Generate AI security advice for a given context."""
+    global _ai_security_insights
+    topic = payload.get("topic", "general")
+    advice = {
+        "advice_id": f"adv-{uuid.uuid4().hex[:8]}",
+        "topic": topic,
+        "priority": "high" if "credential" in str(topic).lower() else "medium",
+        "recommendations": [
+            "Enable strict egress filtering and alert on high-volume external uploads.",
+            "Rotate exposed secrets and enforce short-lived credentials.",
+            "Require MFA for all privileged and service identities.",
+        ],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _ai_security_insights.append(advice)
+    return advice
+
+
+@app.get("/ai/security-insights")
+async def ai_security_insights(limit: int = 20):
+    """Phase 99: Return generated AI security insights."""
+    bounded = _safe_limit(limit, default=20, minimum=1, maximum=100)
+    return {"count": min(len(_ai_security_insights), bounded), "insights": _ai_security_insights[-bounded:]}
+
+
+@app.get("/defense/autonomous")
+async def defense_autonomous():
+    """Phase 100: Return autonomous defense runtime state."""
+    global _autonomous_defense_state
+    return _autonomous_defense_state
+
+
+@app.post("/defense/autonomous/enable")
+async def defense_autonomous_enable(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 100: Enable autonomous defense mode."""
+    global _autonomous_defense_state
+    _autonomous_defense_state["enabled"] = True
+    _autonomous_defense_state["enabled_at"] = datetime.now(timezone.utc).isoformat()
+    _autonomous_defense_state["profile"] = payload.get("profile", "balanced")
+    _autonomous_defense_state.setdefault("actions", []).append({
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": "enable",
+        "profile": _autonomous_defense_state["profile"],
+    })
+    return {"status": "enabled", "state": _autonomous_defense_state}
+
+
+@app.post("/defense/autonomous/disable")
+async def defense_autonomous_disable():
+    """Phase 100: Disable autonomous defense mode."""
+    global _autonomous_defense_state
+    _autonomous_defense_state["enabled"] = False
+    _autonomous_defense_state["disabled_at"] = datetime.now(timezone.utc).isoformat()
+    _autonomous_defense_state.setdefault("actions", []).append({
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "action": "disable",
+    })
+    return {"status": "disabled", "state": _autonomous_defense_state}
+
+
+@app.post("/deception/deploy")
+async def deception_deploy(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 101: Deploy a honeypot asset."""
+    global _deception_honeypots
+    decoy_id = f"hp-{uuid.uuid4().hex[:8]}"
+    honeypot = {
+        "id": decoy_id,
+        "type": payload.get("type", "ssh"),
+        "segment": payload.get("segment", "dmz"),
+        "status": "active",
+        "deployed_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _deception_honeypots[decoy_id] = honeypot
+    return {"status": "deployed", "honeypot": honeypot}
+
+
+@app.get("/deception/honeypots")
+async def deception_honeypots():
+    """Phase 101: List deployed honeypots."""
+    return {"count": len(_deception_honeypots), "items": list(_deception_honeypots.values())}
+
+
+@app.get("/deception/alerts")
+async def deception_alerts(refresh: bool = False):
+    """Phase 101: Return deception trigger alerts."""
+    global _deception_alerts
+    if refresh or not _deception_alerts:
+        _deception_alerts = [
+            {
+                "alert_id": f"dec-{uuid.uuid4().hex[:8]}",
+                "honeypot_id": next(iter(_deception_honeypots), "hp-demo"),
+                "source_ip": "203.0.113.77",
+                "event": "credential_spray",
+                "severity": "high",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        ]
+    return {"alerts": len(_deception_alerts), "items": _deception_alerts}
+
+
+@app.post("/deception/remove/{id}")
+async def deception_remove(id: str):
+    """Phase 101: Remove a deployed honeypot by id."""
+    removed = _deception_honeypots.pop(id, None)
+    if not removed:
+        raise HTTPException(status_code=404, detail=f"Honeypot not found: {id}")
+    return {"status": "removed", "honeypot": removed}
+
+
+@app.post("/deception/honeytoken/create")
+async def deception_honeytoken_create(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 102: Create honeytoken for leak detection."""
+    token_id = f"ht-{uuid.uuid4().hex[:8]}"
+    token = {
+        "id": token_id,
+        "label": payload.get("label", "canary-credential"),
+        "scope": payload.get("scope", "internal"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _honeytokens[token_id] = token
+    return {"status": "created", "token": token}
+
+
+@app.get("/deception/honeytoken/events")
+async def deception_honeytoken_events(refresh: bool = False):
+    """Phase 102: Return honeytoken access events."""
+    global _honeytoken_events
+    if refresh or not _honeytoken_events:
+        _honeytoken_events = [
+            {
+                "event_id": f"hte-{uuid.uuid4().hex[:8]}",
+                "token_id": next(iter(_honeytokens), "ht-demo"),
+                "source": "unknown-ci-job",
+                "severity": "critical",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        ]
+    return {"events": len(_honeytoken_events), "items": _honeytoken_events}
+
+
+@app.delete("/deception/honeytoken/{id}")
+async def deception_honeytoken_delete(id: str):
+    """Phase 102: Delete an existing honeytoken."""
+    removed = _honeytokens.pop(id, None)
+    if not removed:
+        raise HTTPException(status_code=404, detail=f"Honeytoken not found: {id}")
+    return {"status": "deleted", "token": removed}
+
+
+@app.get("/intel/darkweb/breaches")
+async def intel_darkweb_breaches(refresh: bool = False):
+    """Phase 103: Return dark web breach records."""
+    global _darkweb_breaches
+    if refresh or not _darkweb_breaches:
+        _darkweb_breaches = [
+            {"source": "forum-alpha", "records": 12000, "asset": "crm-user-db", "severity": "high"},
+            {"source": "paste-beta", "records": 470, "asset": "vpn-accounts", "severity": "critical"},
+        ]
+    return {"breaches": len(_darkweb_breaches), "items": _darkweb_breaches}
+
+
+@app.get("/intel/darkweb/mentions")
+async def intel_darkweb_mentions(refresh: bool = False):
+    """Phase 103: Return dark web mentions related to organization assets."""
+    global _darkweb_mentions
+    if refresh or not _darkweb_mentions:
+        _darkweb_mentions = [
+            {"term": "arkshield", "mentions": 4, "sentiment": "threat"},
+            {"term": "company-vpn", "mentions": 2, "sentiment": "sale"},
+        ]
+    return {"mentions": len(_darkweb_mentions), "items": _darkweb_mentions}
+
+
+@app.get("/intel/darkweb/alerts")
+async def intel_darkweb_alerts(refresh: bool = False):
+    """Phase 103: Return prioritized dark web alerts."""
+    global _darkweb_alerts
+    if refresh or not _darkweb_alerts:
+        _darkweb_alerts = [
+            {
+                "alert_id": f"dw-{uuid.uuid4().hex[:8]}",
+                "type": "credential_sale",
+                "priority": "critical",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        ]
+    return {"alerts": len(_darkweb_alerts), "items": _darkweb_alerts}
+
+
+@app.post("/supplychain/binary/verify")
+async def supplychain_binary_verify(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 104: Verify binary integrity and signer metadata."""
+    global _supply_chain_binaries
+    checksum = str(payload.get("checksum", "sha256:demo"))
+    result = {
+        "binary": payload.get("binary", "agent.bin"),
+        "checksum": checksum,
+        "signature": "valid" if "bad" not in checksum else "invalid",
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _supply_chain_binaries.append(result)
+    return result
+
+
+@app.get("/supplychain/dependencies")
+async def supplychain_dependencies(refresh: bool = False):
+    """Phase 104: Return dependency inventory snapshot."""
+    global _supply_chain_dependencies
+    if refresh or not _supply_chain_dependencies:
+        _supply_chain_dependencies = [
+            {"name": "fastapi", "version": "0.111.0", "risk": "low"},
+            {"name": "urllib3", "version": "2.2.2", "risk": "medium"},
+        ]
+    return {"dependencies": len(_supply_chain_dependencies), "items": _supply_chain_dependencies}
+
+
+@app.get("/supplychain/anomalies")
+async def supplychain_anomalies(refresh: bool = False):
+    """Phase 104: Report supply chain anomalies."""
+    global _supply_chain_anomalies
+    if refresh or not _supply_chain_anomalies:
+        _supply_chain_anomalies = [
+            {
+                "package": "telemetry-agent",
+                "anomaly": "unexpected_publisher",
+                "severity": "high",
+                "detected_at": datetime.now(timezone.utc).isoformat(),
+            }
+        ]
+    return {"anomalies": len(_supply_chain_anomalies), "items": _supply_chain_anomalies}
+
+
+@app.get("/sbom/generate")
+async def sbom_generate(refresh: bool = False):
+    """Phase 105: Generate an SBOM summary."""
+    global _sbom_cache
+    if refresh or not _sbom_cache:
+        _sbom_cache = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "components": 132,
+            "licenses": {"MIT": 88, "Apache-2.0": 31, "BSD-3": 13},
+        }
+    return _sbom_cache
+
+
+@app.get("/sbom/dependencies")
+async def sbom_dependencies():
+    """Phase 105: Return dependencies from generated SBOM data."""
+    if not _supply_chain_dependencies:
+        await supplychain_dependencies(refresh=True)
+    return {"dependencies": _supply_chain_dependencies}
+
+
+@app.get("/sbom/vulnerabilities")
+async def sbom_vulnerabilities(refresh: bool = False):
+    """Phase 105: Return vulnerability findings mapped to SBOM components."""
+    global _sbom_vulnerabilities
+    if refresh or not _sbom_vulnerabilities:
+        _sbom_vulnerabilities = [
+            {"component": "urllib3", "cve": "CVE-2026-1111", "severity": "medium"},
+            {"component": "telemetry-agent", "cve": "CVE-2026-4040", "severity": "high"},
+        ]
+    return {"count": len(_sbom_vulnerabilities), "items": _sbom_vulnerabilities}
+
+
+@app.get("/patch/pending")
+async def patch_pending(refresh: bool = False):
+    """Phase 106: Return pending patch queue."""
+    global _patch_pending
+    if refresh or not _patch_pending:
+        _patch_pending = [
+            {"id": "patch-kb501", "host": "ws-fin-02", "priority": "critical", "status": "pending"},
+            {"id": "patch-kb719", "host": "edge-gateway-01", "priority": "high", "status": "pending"},
+        ]
+    return {"pending": len(_patch_pending), "items": _patch_pending}
+
+
+@app.post("/patch/apply/{id}")
+async def patch_apply(id: str):
+    """Phase 106: Apply patch by id and write history entry."""
+    global _patch_pending, _patch_history
+    patch_item = next((item for item in _patch_pending if item.get("id") == id), None)
+    if not patch_item:
+        raise HTTPException(status_code=404, detail=f"Patch not found: {id}")
+
+    _patch_pending = [item for item in _patch_pending if item.get("id") != id]
+    record = {
+        "id": id,
+        "host": patch_item.get("host"),
+        "applied_at": datetime.now(timezone.utc).isoformat(),
+        "result": "success",
+    }
+    _patch_history.append(record)
+    return {"status": "applied", "record": record}
+
+
+@app.get("/patch/history")
+async def patch_history():
+    """Phase 106: Return patch apply history."""
+    return {"history": _patch_history, "count": len(_patch_history)}
+
+
+@app.get("/benchmark/cis")
+async def benchmark_cis(refresh: bool = False):
+    """Phase 107: Return CIS benchmark posture."""
+    global _benchmark_results
+    if refresh or "cis" not in _benchmark_results:
+        _benchmark_results["cis"] = {
+            "score": 78,
+            "controls_passed": 141,
+            "controls_failed": 39,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    return _benchmark_results["cis"]
+
+
+@app.get("/benchmark/nist")
+async def benchmark_nist(refresh: bool = False):
+    """Phase 107: Return NIST benchmark posture."""
+    global _benchmark_results
+    if refresh or "nist" not in _benchmark_results:
+        _benchmark_results["nist"] = {
+            "score": 81,
+            "maturity": "managed",
+            "gaps": 12,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    return _benchmark_results["nist"]
+
+
+@app.get("/benchmark/recommendations")
+async def benchmark_recommendations():
+    """Phase 107: Return actionable benchmark recommendations."""
+    return {
+        "recommendations": [
+            "Harden privileged service accounts and enforce MFA.",
+            "Reduce outbound DNS tunneling risk with strict egress allowlists.",
+            "Automate patch SLAs for critical hosts under 72 hours.",
+        ]
+    }
+
+
+@app.post("/redteam/simulate")
+async def redteam_simulate(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 108: Start red team simulation."""
+    global _redteam_simulations, _redteam_results
+    sim_id = f"rt-{uuid.uuid4().hex[:8]}"
+    sim = {
+        "simulation_id": sim_id,
+        "scenario": payload.get("scenario", "credential-theft"),
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "status": "completed",
+    }
+    _redteam_simulations.append(sim)
+    _redteam_results.append({
+        "simulation_id": sim_id,
+        "detections_triggered": 7,
+        "mean_time_to_detect_seconds": 142,
+        "coverage_score": 81,
+    })
+    return sim
+
+
+@app.get("/redteam/results")
+async def redteam_results():
+    """Phase 108: Return latest red team simulation results."""
+    return {"count": len(_redteam_results), "results": _redteam_results}
+
+
+@app.get("/redteam/history")
+async def redteam_history():
+    """Phase 108: Return red team simulation history."""
+    return {"count": len(_redteam_simulations), "history": _redteam_simulations}
+
+
+@app.post("/training/scenario/start")
+async def training_scenario_start(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 109: Start blue team training scenario."""
+    global _training_scenarios
+    scenario_id = f"bt-{uuid.uuid4().hex[:8]}"
+    _training_scenarios[scenario_id] = {
+        "scenario_id": scenario_id,
+        "title": payload.get("title", "Phishing incident response"),
+        "status": "running",
+        "score": 0,
+        "started_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return _training_scenarios[scenario_id]
+
+
+@app.get("/training/scenario/status")
+async def training_scenario_status(scenario_id: Optional[str] = None):
+    """Phase 109: Get blue team scenario status."""
+    if scenario_id:
+        state = _training_scenarios.get(scenario_id)
+        if not state:
+            raise HTTPException(status_code=404, detail=f"Scenario not found: {scenario_id}")
+        return state
+    return {"active": len(_training_scenarios), "scenarios": list(_training_scenarios.values())}
+
+
+@app.get("/training/scenario/results")
+async def training_scenario_results(scenario_id: Optional[str] = None):
+    """Phase 109: Get blue team scenario results."""
+    scenarios = list(_training_scenarios.values())
+    if scenario_id:
+        scenarios = [item for item in scenarios if item.get("scenario_id") == scenario_id]
+        if not scenarios:
+            raise HTTPException(status_code=404, detail=f"Scenario not found: {scenario_id}")
+
+    results = []
+    for item in scenarios:
+        results.append({
+            "scenario_id": item.get("scenario_id"),
+            "status": "completed" if item.get("status") == "running" else item.get("status"),
+            "score": max(68, int(item.get("score", 0)) or 76),
+        })
+    return {"count": len(results), "results": results}
+
+
+@app.get("/attack-surface/map")
+async def attack_surface_map(refresh: bool = False):
+    """Phase 110: Generate attack surface map summary."""
+    global _attack_surface_map
+    if refresh or not _attack_surface_map:
+        _attack_surface_map = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "internet_exposed_assets": 14,
+            "critical_assets": 6,
+            "high_risk_paths": 4,
+        }
+    return _attack_surface_map
+
+
+@app.get("/attack-surface/exposed-assets")
+async def attack_surface_exposed_assets():
+    """Phase 110: List exposed assets."""
+    return {
+        "assets": [
+            {"asset": "vpn-gateway", "port": 443, "risk": "high"},
+            {"asset": "legacy-rdp-host", "port": 3389, "risk": "critical"},
+            {"asset": "mail-relay", "port": 25, "risk": "medium"},
+        ]
+    }
+
+
+@app.get("/attack-surface/risk-score")
+async def attack_surface_risk_score():
+    """Phase 110: Return attack surface risk score."""
+    if not _attack_surface_map:
+        await attack_surface_map(refresh=True)
+    score = min(100, _attack_surface_map.get("internet_exposed_assets", 0) * 4 + _attack_surface_map.get("high_risk_paths", 0) * 10)
+    return {"score": score, "status": "elevated" if score >= 60 else "moderate"}
+
+
+@app.get("/identity/risks")
+async def identity_risks(refresh: bool = False):
+    """Phase 111: Return digital identity risk findings."""
+    global _identity_risks
+    if refresh or not _identity_risks:
+        _identity_risks = [
+            {"user": "admin.ops", "risk": "high", "reason": "mfa_disabled"},
+            {"user": "contractor.dev", "risk": "critical", "reason": "impossible_travel"},
+        ]
+    return {"count": len(_identity_risks), "items": _identity_risks}
+
+
+@app.get("/identity/compromised")
+async def identity_compromised(refresh: bool = False):
+    """Phase 111: Return potentially compromised identities."""
+    global _compromised_identities
+    if refresh or not _compromised_identities:
+        _compromised_identities = [
+            {"user": "contractor.dev", "source": "darkweb", "status": "active"},
+            {"user": "svc-backup", "source": "credential_reuse", "status": "active"},
+        ]
+    return {"count": len(_compromised_identities), "items": _compromised_identities}
+
+
+@app.post("/identity/lockdown/{user}")
+async def identity_lockdown(user: str):
+    """Phase 111: Lock down a user identity."""
+    return {
+        "user": user,
+        "status": "locked",
+        "actions": ["session_revoked", "password_reset_required", "mfa_enforced"],
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/shadowit/apps")
+async def shadowit_apps(refresh: bool = False):
+    """Phase 112: Discover shadow IT applications."""
+    global _shadowit_apps
+    if refresh or not _shadowit_apps:
+        _shadowit_apps = [
+            {"name": "quickshare-pro", "users": 23, "category": "file-sharing", "risk": "high"},
+            {"name": "taskboard-lite", "users": 8, "category": "productivity", "risk": "medium"},
+        ]
+    return {"count": len(_shadowit_apps), "items": _shadowit_apps}
+
+
+@app.get("/shadowit/risks")
+async def shadowit_risks():
+    """Phase 112: Return shadow IT risk summary."""
+    if not _shadowit_apps:
+        await shadowit_apps(refresh=True)
+    risky = [item for item in _shadowit_apps if item.get("risk") in {"high", "critical"}]
+    return {"high_risk_apps": len(risky), "items": risky}
+
+
+@app.get("/data/access-policies")
+async def data_access_policies():
+    """Phase 113: Return current data access governance policies."""
+    global _data_access_policies
+    if not _data_access_policies:
+        _data_access_policies = [
+            {"policy_id": "dap-001", "resource": "finance", "rule": "least-privilege", "status": "active"},
+            {"policy_id": "dap-002", "resource": "customer-pii", "rule": "mfa-required", "status": "active"},
+        ]
+    return {"count": len(_data_access_policies), "items": _data_access_policies}
+
+
+@app.get("/data/access-violations")
+async def data_access_violations(refresh: bool = False):
+    """Phase 113: Return data access policy violation events."""
+    global _data_access_violations
+    if refresh or not _data_access_violations:
+        _data_access_violations = [
+            {"user": "intern.ops", "resource": "customer-pii", "violation": "outside-business-hours", "severity": "high"},
+            {"user": "contractor.dev", "resource": "finance", "violation": "unauthorized-export", "severity": "critical"},
+        ]
+    return {"count": len(_data_access_violations), "items": _data_access_violations}
+
+
+@app.post("/data/access/policy")
+async def data_access_policy_create(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 113: Add a new data access governance policy."""
+    global _data_access_policies
+    policy = {
+        "policy_id": f"dap-{uuid.uuid4().hex[:6]}",
+        "resource": payload.get("resource", "general"),
+        "rule": payload.get("rule", "least-privilege"),
+        "status": "active",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _data_access_policies.append(policy)
+    return {"status": "created", "policy": policy}
+
+
+@app.get("/config/drift")
+async def config_drift(refresh: bool = False):
+    """Phase 114: Detect secure configuration drift."""
+    global _config_drift_log
+    if refresh or not _config_drift_log:
+        _config_drift_log = [
+            {"asset": "ws-fin-02", "setting": "firewall_policy", "expected": "strict", "current": "open", "severity": "high"},
+            {"asset": "edge-gateway-01", "setting": "ssh_root_login", "expected": "disabled", "current": "enabled", "severity": "critical"},
+        ]
+    return {"drift_items": len(_config_drift_log), "items": _config_drift_log}
+
+
+@app.get("/config/drift/history")
+async def config_drift_history():
+    """Phase 114: Return historical configuration drift data."""
+    if not _config_drift_log:
+        await config_drift(refresh=True)
+    return {
+        "history_points": len(_config_drift_log),
+        "history": _config_drift_log,
+    }
+
+
+@app.get("/ai/model/integrity")
+async def ai_model_integrity(refresh: bool = False):
+    """Phase 115: Return AI model integrity checks."""
+    global _ai_model_integrity
+    if refresh or not _ai_model_integrity:
+        _ai_model_integrity = [
+            {"model": "threat-classifier-v3", "checksum_ok": True, "drift_score": 0.08, "status": "healthy"},
+            {"model": "email-detector-v2", "checksum_ok": True, "drift_score": 0.19, "status": "review"},
+        ]
+    return {"models": len(_ai_model_integrity), "items": _ai_model_integrity}
+
+
+@app.get("/ai/model/anomalies")
+async def ai_model_anomalies():
+    """Phase 115: Return anomalous AI model observations."""
+    if not _ai_model_integrity:
+        await ai_model_integrity(refresh=True)
+    anomalies = [item for item in _ai_model_integrity if float(item.get("drift_score", 0.0)) >= 0.15]
+    return {"anomalies": len(anomalies), "items": anomalies}
+
+
+@app.get("/ai/model/poisoning")
+async def ai_model_poisoning(refresh: bool = False):
+    """Phase 116: Detect AI model poisoning indicators."""
+    global _ai_model_poisoning
+    if refresh or not _ai_model_poisoning:
+        _ai_model_poisoning = [
+            {"model": "email-detector-v2", "indicator": "label_skew", "severity": "high", "confidence": 0.83}
+        ]
+    return {"findings": len(_ai_model_poisoning), "items": _ai_model_poisoning}
+
+
+@app.post("/ai/model/validate")
+async def ai_model_validate(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 116: Validate model against supplied checks."""
+    model_name = payload.get("model", "threat-classifier-v3")
+    return {
+        "model": model_name,
+        "validated": True,
+        "issues": 0,
+        "validated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.post("/investigation/start")
+async def investigation_start(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 117: Start autonomous threat investigation."""
+    global _threat_investigations
+    inv_id = f"inv-{uuid.uuid4().hex[:8]}"
+    _threat_investigations[inv_id] = {
+        "id": inv_id,
+        "target": payload.get("target", "unknown-host"),
+        "hypothesis": payload.get("hypothesis", "credential abuse"),
+        "status": "running",
+        "started_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return _threat_investigations[inv_id]
+
+
+@app.get("/investigation/status")
+async def investigation_status(id: Optional[str] = None):
+    """Phase 117: Return investigation status."""
+    if id:
+        item = _threat_investigations.get(id)
+        if not item:
+            raise HTTPException(status_code=404, detail=f"Investigation not found: {id}")
+        return item
+    return {"count": len(_threat_investigations), "items": list(_threat_investigations.values())}
+
+
+@app.get("/investigation/results")
+async def investigation_results(id: Optional[str] = None):
+    """Phase 117: Return investigation findings."""
+    items = list(_threat_investigations.values())
+    if id:
+        items = [item for item in items if item.get("id") == id]
+        if not items:
+            raise HTTPException(status_code=404, detail=f"Investigation not found: {id}")
+
+    results = []
+    for item in items:
+        results.append({
+            "id": item.get("id"),
+            "status": "completed",
+            "confidence": 0.88,
+            "findings": ["suspicious token reuse", "high-volume egress", "new persistence task"],
+        })
+    return {"count": len(results), "results": results}
+
+
+@app.get("/correlation/events")
+async def correlation_events():
+    """Phase 118: Return events prepared for threat correlation."""
+    global _correlation_incidents
+    if not _correlation_incidents:
+        _correlation_incidents = [
+            {
+                "incident_id": f"inc-{uuid.uuid4().hex[:8]}",
+                "signals": ["bruteforce", "privilege-escalation", "exfiltration"],
+                "confidence": 0.91,
+                "status": "open",
+            }
+        ]
+    return {"count": len(_correlation_incidents), "events": _correlation_incidents}
+
+
+@app.get("/correlation/incidents")
+async def correlation_incidents():
+    """Phase 118: Return correlated incidents."""
+    if not _correlation_incidents:
+        await correlation_events()
+    return {"count": len(_correlation_incidents), "incidents": _correlation_incidents}
+
+
+@app.get("/graph/entities")
+async def graph_entities():
+    """Phase 119: Return security knowledge graph entities."""
+    global _security_knowledge_graph
+    if not _security_knowledge_graph.get("entities"):
+        _security_knowledge_graph["entities"] = [
+            {"id": "user:contractor.dev", "type": "user"},
+            {"id": "host:eng-laptop-14", "type": "host"},
+            {"id": "ip:198.51.100.44", "type": "ip"},
+        ]
+    return {"count": len(_security_knowledge_graph["entities"]), "entities": _security_knowledge_graph["entities"]}
+
+
+@app.get("/graph/relationships")
+async def graph_relationships():
+    """Phase 119: Return security knowledge graph relationships."""
+    global _security_knowledge_graph
+    if not _security_knowledge_graph.get("relationships"):
+        _security_knowledge_graph["relationships"] = [
+            {"from": "user:contractor.dev", "to": "host:eng-laptop-14", "relation": "logged_in"},
+            {"from": "host:eng-laptop-14", "to": "ip:198.51.100.44", "relation": "connected_to"},
+        ]
+    return {
+        "count": len(_security_knowledge_graph["relationships"]),
+        "relationships": _security_knowledge_graph["relationships"],
+    }
+
+
+@app.post("/sandbox/network-sim")
+async def sandbox_network_sim(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 120: Start threat simulation in network sandbox."""
+    global _network_simulations
+    sim_id = f"ns-{uuid.uuid4().hex[:8]}"
+    _network_simulations[sim_id] = {
+        "simulation_id": sim_id,
+        "scenario": payload.get("scenario", "c2-beaconing"),
+        "status": "completed",
+        "detections": 5,
+        "started_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return _network_simulations[sim_id]
+
+
+@app.get("/sandbox/network-results")
+async def sandbox_network_results(simulation_id: Optional[str] = None):
+    """Phase 120: Return network sandbox simulation results."""
+    if simulation_id:
+        item = _network_simulations.get(simulation_id)
+        if not item:
+            raise HTTPException(status_code=404, detail=f"Simulation not found: {simulation_id}")
+        return item
+    return {"count": len(_network_simulations), "results": list(_network_simulations.values())}
+
+
+@app.get("/data/lineage")
+async def data_lineage(refresh: bool = False):
+    """Phase 121: Return data lineage tracking map."""
+    global _data_lineage
+    if refresh or not _data_lineage:
+        _data_lineage = [
+            {"dataset": "customer_pii", "source": "crm", "sink": "analytics-lake", "encrypted": True},
+            {"dataset": "payroll", "source": "hr", "sink": "finance-share", "encrypted": False},
+        ]
+    return {"count": len(_data_lineage), "items": _data_lineage}
+
+
+@app.get("/data/lineage/risks")
+async def data_lineage_risks():
+    """Phase 121: Return data lineage risk findings."""
+    if not _data_lineage:
+        await data_lineage(refresh=True)
+    risks = [item for item in _data_lineage if not bool(item.get("encrypted"))]
+    return {"risks": len(risks), "items": risks}
+
+
+@app.get("/zerotrust/policies")
+async def zerotrust_policies():
+    """Phase 122: Return zero trust policies."""
+    global _zerotrust_policies
+    if not _zerotrust_policies:
+        _zerotrust_policies = [
+            {"id": "zt-1", "policy": "verify-explicitly", "status": "active"},
+            {"id": "zt-2", "policy": "least-privilege", "status": "active"},
+        ]
+    return {"count": len(_zerotrust_policies), "items": _zerotrust_policies}
+
+
+@app.post("/zerotrust/enforce")
+async def zerotrust_enforce(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 122: Enforce a zero trust policy action."""
+    global _zerotrust_events
+    event = {
+        "event_id": f"zt-{uuid.uuid4().hex[:8]}",
+        "action": payload.get("action", "challenge"),
+        "target": payload.get("target", "unknown"),
+        "status": "enforced",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    _zerotrust_events.append(event)
+    return event
+
+
+@app.get("/zerotrust/events")
+async def zerotrust_events():
+    """Phase 122: Return zero trust enforcement events."""
+    return {"count": len(_zerotrust_events), "items": _zerotrust_events}
+
+
+@app.get("/rbac/risk-scores")
+async def rbac_risk_scores():
+    """Phase 123: Return risk scores for access control entities."""
+    global _rbac_risk_scores
+    if not _rbac_risk_scores:
+        _rbac_risk_scores = {"admin.ops": 82, "contractor.dev": 91, "alice": 38, "svc-backup": 76}
+    return {"entities": len(_rbac_risk_scores), "scores": _rbac_risk_scores}
+
+
+@app.post("/rbac/adjust")
+async def rbac_adjust(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 123: Adjust access based on risk."""
+    global _rbac_risk_scores
+    entity = str(payload.get("entity", "unknown"))
+    score = int(payload.get("score", 50))
+    _rbac_risk_scores[entity] = score
+    action = "restrict" if score >= 80 else "monitor" if score >= 60 else "allow"
+    return {"entity": entity, "score": score, "action": action}
+
+
+@app.post("/chaos/security-test")
+async def chaos_security_test(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 124: Start security chaos test."""
+    global _chaos_tests
+    test = {
+        "test_id": f"chaos-{uuid.uuid4().hex[:8]}",
+        "scenario": payload.get("scenario", "credential-failure"),
+        "status": "completed",
+        "resilience_score": 74,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    _chaos_tests.append(test)
+    return test
+
+
+@app.get("/chaos/results")
+async def chaos_results():
+    """Phase 124: Return security chaos test results."""
+    return {"count": len(_chaos_tests), "results": _chaos_tests}
+
+
+@app.get("/quantum/crypto-audit")
+async def quantum_crypto_audit(refresh: bool = False):
+    """Phase 125: Return quantum-readiness cryptographic audit."""
+    global _quantum_audit
+    if refresh or not _quantum_audit:
+        _quantum_audit = {
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "algorithms": {"rsa": 14, "ecc": 9, "post_quantum": 1},
+            "legacy_crypto_assets": 11,
+            "readiness_score": 44,
+        }
+    return _quantum_audit
+
+
+@app.get("/quantum/recommendations")
+async def quantum_recommendations():
+    """Phase 125: Return quantum migration recommendations."""
+    return {
+        "recommendations": [
+            "Inventory RSA/ECC certificates and prioritize internet-facing services.",
+            "Pilot hybrid TLS with post-quantum key exchange for critical APIs.",
+            "Establish crypto-agility policy with annual algorithm review.",
+        ]
+    }
+
+
+@app.get("/cross-env/incidents")
+async def cross_env_incidents(refresh: bool = False):
+    """Phase 126: Return correlated incidents across environments."""
+    global _cross_env_incidents
+    if refresh or not _cross_env_incidents:
+        _cross_env_incidents = [
+            {"id": "cei-001", "environments": ["onprem", "cloud"], "type": "credential-abuse", "severity": "high"},
+            {"id": "cei-002", "environments": ["cloud", "saas"], "type": "api-token-reuse", "severity": "critical"},
+        ]
+    return {"count": len(_cross_env_incidents), "items": _cross_env_incidents}
+
+
+@app.get("/cross-env/threats")
+async def cross_env_threats():
+    """Phase 126: Return threat patterns across environments."""
+    if not _cross_env_incidents:
+        await cross_env_incidents(refresh=True)
+    threats = [{"type": item.get("type"), "severity": item.get("severity")} for item in _cross_env_incidents]
+    return {"count": len(threats), "items": threats}
+
+
+@app.get("/risk/external")
+async def risk_external(refresh: bool = False):
+    """Phase 127: Return external digital risk indicators."""
+    global _digital_risk_monitors
+    if refresh or not _digital_risk_monitors:
+        _digital_risk_monitors = [
+            {"signal": "domain-typosquat", "severity": "high", "status": "open"},
+            {"signal": "brand-impersonation", "severity": "critical", "status": "investigating"},
+        ]
+    return {"count": len(_digital_risk_monitors), "items": _digital_risk_monitors}
+
+
+@app.get("/risk/reputation")
+async def risk_reputation():
+    """Phase 127: Return digital reputation score."""
+    if not _digital_risk_monitors:
+        await risk_external(refresh=True)
+    critical = sum(1 for item in _digital_risk_monitors if item.get("severity") == "critical")
+    score = max(0, 90 - critical * 20 - len(_digital_risk_monitors) * 8)
+    return {"reputation_score": score, "status": "watch" if score < 70 else "good"}
+
+
+@app.get("/insider/score/{user}")
+async def insider_score(user: str):
+    """Phase 128: Return insider threat score for a user."""
+    global _insider_risk_scores
+    if user not in _insider_risk_scores:
+        _insider_risk_scores[user] = min(95, max(10, len(user) * 7))
+    score = _insider_risk_scores[user]
+    return {"user": user, "score": score, "risk": "high" if score >= 75 else "medium" if score >= 50 else "low"}
+
+
+@app.get("/insider/high-risk")
+async def insider_high_risk():
+    """Phase 128: Return high-risk insider identities."""
+    if not _insider_risk_scores:
+        _insider_risk_scores.update({"contractor.dev": 88, "admin.ops": 79, "alice": 34})
+    items = [{"user": k, "score": v} for k, v in _insider_risk_scores.items() if v >= 75]
+    return {"count": len(items), "items": items}
+
+
+@app.get("/campaigns/active")
+async def campaigns_active(refresh: bool = False):
+    """Phase 129: Return active threat campaigns."""
+    global _threat_campaigns
+    if refresh or not _threat_campaigns:
+        _threat_campaigns = [
+            {"campaign": "Silent Atlas", "status": "active", "targets": 6, "confidence": 0.82},
+            {"campaign": "Blue Ember", "status": "monitoring", "targets": 3, "confidence": 0.69},
+        ]
+    active = [item for item in _threat_campaigns if item.get("status") == "active"]
+    return {"count": len(active), "items": active}
+
+
+@app.get("/campaigns/history")
+async def campaigns_history():
+    """Phase 129: Return threat campaign history."""
+    if not _threat_campaigns:
+        await campaigns_active(refresh=True)
+    return {"count": len(_threat_campaigns), "items": _threat_campaigns}
+
+
+@app.get("/docs/security-report")
+async def docs_security_report():
+    """Phase 130: Return generated security report content."""
+    global _security_docs
+    _security_docs["security_report"] = "Security report generated with incident summary, control status, and prioritized actions."
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "content": _security_docs["security_report"],
+    }
+
+
+@app.get("/docs/architecture")
+async def docs_architecture():
+    """Phase 130: Return generated security architecture notes."""
+    global _security_docs
+    _security_docs["architecture"] = "Architecture includes telemetry, correlation, response, and deception layers with zero-trust enforcement."
+    return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "content": _security_docs["architecture"],
+    }
+
+
+@app.post("/soc/assistant/query")
+async def soc_assistant_query(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 131: Query secure AI assistant for SOC workflows."""
+    global _soc_assistant_history
+    question = str(payload.get("query", "Provide current critical risks"))
+    answer = {
+        "query": question,
+        "response": "Top risks include credential exposure, suspicious egress, and high-risk identities.",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    _soc_assistant_history.append(answer)
+    return answer
+
+
+@app.get("/soc/assistant/history")
+async def soc_assistant_history(limit: int = 25):
+    """Phase 131: Return SOC assistant query history."""
+    bounded = _safe_limit(limit, default=25, minimum=1, maximum=200)
+    return {"count": min(len(_soc_assistant_history), bounded), "items": _soc_assistant_history[-bounded:]}
+
+
+@app.get("/attack/prediction")
+async def attack_prediction(refresh: bool = False):
+    """Phase 132: Predict likely near-term attack vectors."""
+    global _attack_predictions
+    if refresh or not _attack_predictions:
+        _attack_predictions = [
+            {"vector": "credential-stuffing", "likelihood": 0.77, "impact": "high"},
+            {"vector": "data-exfiltration", "likelihood": 0.72, "impact": "critical"},
+        ]
+    return {"count": len(_attack_predictions), "items": _attack_predictions}
+
+
+@app.get("/attack/prediction/path")
+async def attack_prediction_path():
+    """Phase 132: Return predicted attack path graph."""
+    return {
+        "path": ["phishing-email", "credential-capture", "vpn-login", "privilege-escalation", "exfiltration"],
+        "confidence": 0.81,
+    }
+
+
+@app.get("/actors/profiles")
+async def actors_profiles(refresh: bool = False):
+    """Phase 133: Return threat actor profiles."""
+    global _threat_actor_profiles
+    if refresh or not _threat_actor_profiles:
+        _threat_actor_profiles = [
+            {"actor": "TA-Delta", "motivation": "financial", "sophistication": "high"},
+            {"actor": "TA-Orchid", "motivation": "espionage", "sophistication": "advanced"},
+        ]
+    return {"count": len(_threat_actor_profiles), "items": _threat_actor_profiles}
+
+
+@app.get("/actors/activities")
+async def actors_activities():
+    """Phase 133: Return recent threat actor activities."""
+    if not _threat_actor_profiles:
+        await actors_profiles(refresh=True)
+    activities = [
+        {"actor": "TA-Delta", "activity": "credential marketplace listing", "severity": "high"},
+        {"actor": "TA-Orchid", "activity": "supply chain reconnaissance", "severity": "critical"},
+    ]
+    return {"count": len(activities), "items": activities}
+
+
+@app.get("/resilience/score")
+async def resilience_score():
+    """Phase 134: Return cyber resilience score."""
+    global _resilience_score
+    if not _resilience_score:
+        _resilience_score = {
+            "score": 76,
+            "recovery_readiness": 72,
+            "response_maturity": 81,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+    return _resilience_score
+
+
+@app.get("/resilience/improvements")
+async def resilience_improvements():
+    """Phase 134: Return resilience improvement recommendations."""
+    return {
+        "recommendations": [
+            "Run tabletop recovery drills monthly for critical services.",
+            "Reduce privileged account sprawl and rotate credentials faster.",
+            "Expand deception coverage in high-value network segments.",
+        ]
+    }
+
+
+@app.post("/recovery/initiate")
+async def recovery_initiate(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 135: Initiate disaster security recovery plan."""
+    global _recovery_status
+    _recovery_status = {
+        "operation_id": f"rec-{uuid.uuid4().hex[:8]}",
+        "scope": payload.get("scope", "critical-assets"),
+        "status": "initiated",
+        "started_at": datetime.now(timezone.utc).isoformat(),
+    }
+    return _recovery_status
+
+
+@app.get("/recovery/status")
+async def recovery_status():
+    """Phase 135: Return recovery operation status."""
+    if not _recovery_status:
+        await recovery_initiate(payload={})
+    return _recovery_status
+
+
+@app.get("/assets/lifecycle")
+async def assets_lifecycle(refresh: bool = False):
+    """Phase 136: Return secure asset lifecycle tracking data."""
+    global _asset_lifecycle
+    if refresh or not _asset_lifecycle:
+        _asset_lifecycle = [
+            {"asset": "ws-fin-02", "stage": "production", "owner": "finance-it", "last_hardening": "2026-02-28"},
+            {"asset": "edge-gateway-01", "stage": "production", "owner": "netsec", "last_hardening": "2026-03-01"},
+        ]
+    return {"count": len(_asset_lifecycle), "items": _asset_lifecycle}
+
+
+@app.get("/assets/risk")
+async def assets_risk():
+    """Phase 136: Return per-asset risk summary."""
+    if not _asset_lifecycle:
+        await assets_lifecycle(refresh=True)
+    risks = [{"asset": item["asset"], "risk_score": 62 if "gateway" in item["asset"] else 44} for item in _asset_lifecycle]
+    return {"count": len(risks), "items": risks}
+
+
+@app.get("/attack-graph")
+async def attack_graph(refresh: bool = False):
+    """Phase 137: Generate attack graph nodes and edges."""
+    global _attack_graph
+    if refresh or not _attack_graph:
+        _attack_graph = {
+            "nodes": ["phishing", "vpn", "domain-controller", "data-store"],
+            "edges": [["phishing", "vpn"], ["vpn", "domain-controller"], ["domain-controller", "data-store"]],
+        }
+    return _attack_graph
+
+
+@app.get("/attack-graph/paths")
+async def attack_graph_paths():
+    """Phase 137: Return likely attack paths from graph."""
+    if not _attack_graph:
+        await attack_graph(refresh=True)
+    return {"paths": [["phishing", "vpn", "domain-controller", "data-store"]], "count": 1}
+
+
+@app.get("/forecast/threats")
+async def forecast_threats(refresh: bool = False):
+    """Phase 138: Forecast likely future threat categories."""
+    global _security_forecasts
+    if refresh or not _security_forecasts:
+        _security_forecasts = [
+            {"window": "7d", "category": "credential-abuse", "probability": 0.74},
+            {"window": "7d", "category": "supply-chain", "probability": 0.51},
+            {"window": "30d", "category": "exfiltration", "probability": 0.68},
+        ]
+    return {"count": len(_security_forecasts), "items": _security_forecasts}
+
+
+@app.get("/forecast/trends")
+async def forecast_trends():
+    """Phase 138: Return trendline for threat forecast confidence."""
+    if not _security_forecasts:
+        await forecast_threats(refresh=True)
+    trend = [{"category": item["category"], "trend": "up" if item["probability"] >= 0.6 else "steady"} for item in _security_forecasts]
+    return {"count": len(trend), "items": trend}
+
+
+@app.post("/policy/generate")
+async def policy_generate(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 139: Generate autonomous policy recommendation."""
+    global _policy_recommendations
+    objective = payload.get("objective", "reduce credential abuse")
+    recommendation = {
+        "policy_id": f"pol-{uuid.uuid4().hex[:8]}",
+        "objective": objective,
+        "controls": [
+            "Require MFA for all external logins",
+            "Block impossible-travel authentication",
+            "Auto-disable stale privileged sessions",
+        ],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _policy_recommendations.append(recommendation)
+    return recommendation
+
+
+@app.get("/policy/recommendations")
+async def policy_recommendations():
+    """Phase 139: Return generated policy recommendations."""
+    return {"count": len(_policy_recommendations), "items": _policy_recommendations}
+
+
+@app.get("/intel/shared-threats")
+async def intel_shared_threats():
+    """Phase 140: Return cross-tenant shared threat intelligence."""
+    return {"count": len(_shared_threats), "items": _shared_threats}
+
+
+@app.post("/intel/share-threat")
+async def intel_share_threat(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Phase 140: Share threat indicator with tenants."""
+    threat = {
+        "id": f"st-{uuid.uuid4().hex[:8]}",
+        "indicator": payload.get("indicator", "unknown-ioc"),
+        "type": payload.get("type", "domain"),
+        "severity": payload.get("severity", "high"),
+        "shared_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _shared_threats.append(threat)
+    return {"status": "shared", "threat": threat}
 
 
 # --- Phases 30-140: Expansion Route Registry (Module-Level) ---

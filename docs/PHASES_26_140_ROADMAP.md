@@ -1,6 +1,6 @@
 # Arkshield Phases 26-140 Roadmap
 
-This document tracks proposed phases and endpoint plans beyond the currently implemented runtime phases.
+This document tracks Arkshield phases 26-140 and their endpoint plans, now implemented in runtime.
 
 ## Implemented in Runtime
 
@@ -460,7 +460,7 @@ Capabilities:
 - Recently installed extension tracking and obfuscated code identification
 - Threshold-based suspicious extension filtering with top indicator analytics
 
-## Planned Deep Implementations
+## Implemented in Runtime (Deep)
 
 Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 

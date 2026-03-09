@@ -62,6 +62,16 @@ _policy_state: Dict[str, Any] = {
 }
 _policy_violation_log: List[Dict[str, Any]] = []
 _playbook_run_history: List[Dict[str, Any]] = []
+_digital_twin_snapshots: List[Dict[str, Any]] = []
+_digital_twin_simulations: List[Dict[str, Any]] = []
+_autonomous_defense_state: Dict[str, Any] = {
+    "enabled": False,
+    "mode": "recommendation",
+    "last_updated": datetime.now(timezone.utc).isoformat(),
+    "policy_binding": "monitor",
+    "last_action": None,
+}
+_autonomous_action_log: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -5505,6 +5515,180 @@ async def playbooks_run(payload: Dict[str, Any] = Body(default_factory=dict)):
         del _playbook_run_history[:-1000]
 
     return run
+
+
+# --- Phase 48: Digital Twin Security Model (Deep Implementation) ---
+
+@app.get("/system/digital-twin")
+async def system_digital_twin():
+    """Build a live digital twin snapshot of system risk and topology signals."""
+    threat = await threat_posture()
+    risk = await risk_score()
+    assets = await risk_critical_assets()
+    net = await network_traffic()
+    cont = await containers_inventory()
+    cloud = await cloud_posture()
+
+    twin = {
+        "snapshot_id": f"twin-{uuid.uuid4().hex[:10]}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "system_state": {
+            "risk_level": risk.get("risk_level", "unknown"),
+            "enterprise_risk_score": risk.get("score", 0),
+            "active_threats": threat.get("active_threats", 0),
+            "telemetry_health": "degraded" if int(threat.get("overall_risk_score", 0)) > 70 else "nominal",
+        },
+        "topology": {
+            "critical_assets": assets.get("critical_assets", []),
+            "network": {
+                "connections": net.get("connections", 0),
+                "suspicious_connections": net.get("suspicious_connections", 0),
+            },
+            "workloads": {
+                "containers_detected": cont.get("count", 0),
+                "cloud_providers": cloud.get("providers_detected", []),
+            },
+        },
+        "risk_components": risk.get("components", {}),
+    }
+
+    _digital_twin_snapshots.append(twin)
+    if len(_digital_twin_snapshots) > 300:
+        del _digital_twin_snapshots[:-300]
+
+    return twin
+
+
+@app.post("/system/simulate-attack")
+async def system_simulate_attack(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Simulate attack impact on the digital twin using a scenario profile."""
+    scenario = str(payload.get("scenario", "ransomware")).strip().lower()
+    intensity = int(max(1, min(10, int(payload.get("intensity", 5)))))
+    target = str(payload.get("target", "core-infrastructure")).strip() or "core-infrastructure"
+
+    if scenario not in {"ransomware", "credential-theft", "lateral-movement", "supply-chain"}:
+        raise HTTPException(status_code=400, detail="unsupported scenario")
+
+    baseline = await system_digital_twin()
+    base_score = int(max(0, min(100, baseline.get("system_state", {}).get("enterprise_risk_score", 0))))
+
+    multipliers = {
+        "ransomware": 2.4,
+        "credential-theft": 1.8,
+        "lateral-movement": 2.0,
+        "supply-chain": 2.2,
+    }
+    delta = int(round(intensity * multipliers[scenario]))
+    projected = int(max(0, min(100, base_score + delta)))
+    blast_radius = "localized" if projected < 55 else "cross-segment" if projected < 80 else "enterprise-wide"
+
+    recommendations = [
+        "Isolate impacted endpoints and enforce network segmentation",
+        "Trigger credential reset and short-lived token rotation",
+        "Execute prioritized incident response playbook",
+    ]
+    if scenario == "supply-chain":
+        recommendations.append("Freeze dependency updates and validate software provenance")
+
+    simulation = {
+        "simulation_id": f"sim-{uuid.uuid4().hex[:10]}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "scenario": scenario,
+        "target": target,
+        "intensity": intensity,
+        "baseline_score": base_score,
+        "projected_score": projected,
+        "risk_delta": projected - base_score,
+        "blast_radius": blast_radius,
+        "recommended_actions": recommendations,
+        "twin_snapshot_id": baseline.get("snapshot_id"),
+    }
+
+    _digital_twin_simulations.append(simulation)
+    if len(_digital_twin_simulations) > 1000:
+        del _digital_twin_simulations[:-1000]
+
+    return simulation
+
+
+# --- Phase 49: Autonomous Defense System (Deep Implementation) ---
+
+@app.get("/autonomous/status")
+async def autonomous_status():
+    """Report autonomous defense readiness, mode, and most recent response actions."""
+    policy = await policy_get()
+    risk = await risk_score()
+    recent_playbooks = _playbook_run_history[-5:]
+    recent_actions = _autonomous_action_log[-10:]
+
+    readiness = "ready"
+    blockers = []
+    if policy.get("mode") != "enforce":
+        blockers.append("Policy mode not set to enforce")
+    if int(risk.get("score", 0)) < 30:
+        blockers.append("Risk is low; autonomous interventions not required")
+    if blockers:
+        readiness = "conditional"
+
+    return {
+        "enabled": _autonomous_defense_state.get("enabled", False),
+        "mode": _autonomous_defense_state.get("mode", "recommendation"),
+        "policy_binding": _autonomous_defense_state.get("policy_binding", "monitor"),
+        "readiness": readiness,
+        "blockers": blockers,
+        "enterprise_risk_score": risk.get("score", 0),
+        "last_action": _autonomous_defense_state.get("last_action"),
+        "recent_actions": recent_actions,
+        "recent_playbook_runs": recent_playbooks,
+        "updated_at": _autonomous_defense_state.get("last_updated"),
+    }
+
+
+@app.post("/autonomous/enable")
+async def autonomous_enable(payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Enable/disable autonomous defense and optionally trigger immediate containment workflow."""
+    enabled = bool(payload.get("enabled", True))
+    mode = str(payload.get("mode", _autonomous_defense_state.get("mode", "recommendation"))).strip().lower()
+    if mode not in {"recommendation", "assisted", "full"}:
+        mode = "recommendation"
+
+    _autonomous_defense_state["enabled"] = enabled
+    _autonomous_defense_state["mode"] = mode
+    _autonomous_defense_state["policy_binding"] = _policy_state.get("mode", "monitor")
+    _autonomous_defense_state["last_updated"] = datetime.now(timezone.utc).isoformat()
+
+    action = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "type": "autonomous-toggle",
+        "status": "enabled" if enabled else "disabled",
+        "mode": mode,
+    }
+
+    if enabled:
+        risk = await risk_score()
+        if int(risk.get("score", 0)) >= 65 and mode in {"assisted", "full"}:
+            pb_result = await playbooks_run({
+                "playbook_id": "pb-dns-containment",
+                "requested_by": "autonomous-defense",
+                "context": {
+                    "trigger": "risk-threshold",
+                    "risk_score": risk.get("score", 0),
+                },
+            })
+            action["playbook_triggered"] = pb_result.get("run_id")
+            action["playbook_outcome"] = pb_result.get("outcome")
+
+    _autonomous_action_log.append(action)
+    if len(_autonomous_action_log) > 1000:
+        del _autonomous_action_log[:-1000]
+
+    _autonomous_defense_state["last_action"] = action
+
+    return {
+        "status": "updated",
+        "autonomous_defense": _autonomous_defense_state,
+        "action": action,
+    }
 
 
 # --- Phases 30-140: Expansion Route Registry (Module-Level) ---

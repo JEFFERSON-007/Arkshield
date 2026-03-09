@@ -236,17 +236,29 @@ Capabilities:
 - Response playbook cataloging
 - Simulated run timelines with policy-aware outcomes
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 48 - Digital Twin Security Model
+
+Endpoints:
 - `GET /system/digital-twin`
 - `POST /system/simulate-attack`
 
+Capabilities:
+- Live security state digital twin snapshots
+- Scenario-based attack impact projection
+
 ### Phase 49 - Autonomous Defense System
+
+Endpoints:
 - `GET /autonomous/status`
 - `POST /autonomous/enable`
+
+Capabilities:
+- Autonomous defense mode management and readiness checks
+- Risk-threshold playbook triggering with action logging
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 50 - Global Security Graph
 - `GET /security/graph`

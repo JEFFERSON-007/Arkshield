@@ -73,5 +73,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 45** (`/risk/score`, `/risk/critical-assets`) with weighted enterprise risk aggregation and critical asset prioritization.
 - Implemented **Phase 46** (`/policy`, `/policy/apply`, `/policy/violations`) with policy state management and telemetry-driven violation detection.
 - Implemented **Phase 47** (`/playbooks`, `/playbooks/run`) with automated playbook catalog and simulated response execution.
-- Implemented baseline endpoints for remaining **Phases 48-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 48** (`/system/digital-twin`, `/system/simulate-attack`) with live digital twin snapshots and attack impact simulation.
+- Implemented **Phase 49** (`/autonomous/status`, `/autonomous/enable`) with autonomous defense control, readiness evaluation, and response trigger logging.
+- Implemented baseline endpoints for remaining **Phases 50-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

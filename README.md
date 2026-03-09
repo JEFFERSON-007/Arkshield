@@ -89,7 +89,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /risk/score` + `GET /risk/critical-assets` (Phase 45): Cross-domain enterprise risk scoring and critical asset prioritization.
 - `GET /policy` + `POST /policy/apply` + `GET /policy/violations` (Phase 46): Runtime security policy management and telemetry-driven policy violation tracking.
 - `GET /playbooks` + `POST /playbooks/run` (Phase 47): Automated response playbook catalog and simulated execution timelines.
-- Phases 48-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /system/digital-twin` + `POST /system/simulate-attack` (Phase 48): Digital twin state snapshots with scenario-driven attack impact simulation.
+- `GET /autonomous/status` + `POST /autonomous/enable` (Phase 49): Autonomous defense readiness, control mode, and risk-triggered response execution.
+- Phases 50-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

@@ -81,7 +81,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /network/traffic` + `GET /network/anomalies` (Phase 37): Traffic sampling with baseline-driven anomaly detection.
 - `GET /insider/activity` + `GET /insider/risk-scores` (Phase 38): User-centric behavioral analytics and insider risk scoring.
 - `GET /patch/status` + `GET /patch/vulnerabilities` + `POST /patch/recommendations` (Phase 39): Patch posture analysis, vulnerability signals, and prioritized remediation plans.
-- Phases 40-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /supply-chain/dependencies` + `GET /supply-chain/vulnerabilities` (Phase 40): Dependency inventory and heuristic supply-chain vulnerability detection.
+- `GET /containers` + `GET /containers/security` + `POST /containers/scan` (Phase 41): Container runtime inventory and security posture scans.
+- Phases 42-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

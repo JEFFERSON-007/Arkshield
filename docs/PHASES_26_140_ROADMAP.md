@@ -156,18 +156,30 @@ Capabilities:
 - Patch analysis
 - Vulnerability tracking
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
-
 ### Phase 40 - Supply Chain Attack Detection
+
+Endpoints:
 - `GET /supply-chain/dependencies`
 - `GET /supply-chain/vulnerabilities`
 
+Capabilities:
+- Software dependency scanning
+- Supply chain attack detection
+
 ### Phase 41 - Container Security
+
+Endpoints:
 - `GET /containers`
 - `GET /containers/security`
 - `POST /containers/scan`
+
+Capabilities:
+- Docker security scanning
+- Container runtime monitoring
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
 
 ### Phase 42 - Kubernetes Security
 - `GET /kubernetes/cluster`

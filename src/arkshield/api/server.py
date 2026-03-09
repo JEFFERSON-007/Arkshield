@@ -45,6 +45,7 @@ _ransomware_simulations: List[Dict[str, Any]] = []
 _dns_blocked_domains: Dict[str, Dict[str, Any]] = {}
 _network_traffic_snapshots: List[Dict[str, Any]] = []
 _patch_recommendation_history: List[Dict[str, Any]] = []
+_container_scan_history: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -4570,6 +4571,256 @@ async def patch_recommendations(
         del _patch_recommendation_history[:-500]
 
     return plan
+
+
+# --- Phase 40: Supply Chain Attack Detection (Deep Implementation) ---
+
+def _collect_dependency_entries() -> List[Dict[str, Any]]:
+    """Collect dependency entries from common project manifests."""
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    manifest_files = [
+        os.path.join(project_root, "requirements.txt"),
+        os.path.join(project_root, "setup.py"),
+        os.path.join(project_root, "pyproject.toml"),
+        os.path.join(project_root, "package.json"),
+    ]
+
+    deps: List[Dict[str, Any]] = []
+    for manifest in manifest_files:
+        if not os.path.exists(manifest):
+            continue
+
+        try:
+            with open(manifest, "r", encoding="utf-8", errors="ignore") as handle:
+                lines = handle.readlines()
+        except Exception:
+            continue
+
+        if manifest.endswith("requirements.txt"):
+            for raw in lines:
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                name = re.split(r"[<>=!~]", line)[0].strip()
+                version = ""
+                match = re.search(r"(?:==|>=|<=|~=|!=|>|<)\s*([A-Za-z0-9\.-]+)", line)
+                if match:
+                    version = match.group(1)
+                deps.append({
+                    "name": name.lower(),
+                    "version": version,
+                    "manifest": os.path.basename(manifest),
+                    "raw": line,
+                })
+
+        elif manifest.endswith("package.json"):
+            try:
+                import json
+                data = json.loads("".join(lines))
+                for section in ["dependencies", "devDependencies"]:
+                    for name, version in (data.get(section) or {}).items():
+                        deps.append({
+                            "name": str(name).lower(),
+                            "version": str(version),
+                            "manifest": os.path.basename(manifest),
+                            "raw": f"{name}:{version}",
+                        })
+            except Exception:
+                pass
+        else:
+            # Basic heuristic extraction for setup.py/pyproject.toml
+            for raw in lines:
+                line = raw.strip()
+                if any(token in line.lower() for token in ["install_requires", "dependencies"]):
+                    deps.append({
+                        "name": "manifest-declaration",
+                        "version": "",
+                        "manifest": os.path.basename(manifest),
+                        "raw": line,
+                    })
+
+    return deps
+
+
+@app.get("/supply-chain/dependencies")
+async def supply_chain_dependencies():
+    """Enumerate software dependencies from project manifests."""
+    deps = _collect_dependency_entries()
+    unique = {}
+    for dep in deps:
+        key = f"{dep['name']}::{dep['manifest']}::{dep.get('version','')}"
+        unique[key] = dep
+
+    result = list(unique.values())
+    result.sort(key=lambda x: (x["manifest"], x["name"]))
+    return {
+        "count": len(result),
+        "dependencies": result,
+    }
+
+
+@app.get("/supply-chain/vulnerabilities")
+async def supply_chain_vulnerabilities():
+    """Heuristically flag high-risk dependencies and suspicious supply-chain markers."""
+    deps = await supply_chain_dependencies()
+    dep_list = deps.get("dependencies", [])
+
+    # Lightweight advisory map for demonstration until CVE feed integration is added.
+    risk_rules = {
+        "log4j": {"risk": 95, "issue": "Historic RCE exposure lineage"},
+        "urllib3": {"risk": 60, "issue": "Review pinned version for known advisories"},
+        "pyyaml": {"risk": 55, "issue": "Unsafe loader misuse risk in legacy code"},
+        "requests": {"risk": 40, "issue": "Verify up-to-date TLS/redirect handling fixes"},
+        "flask": {"risk": 50, "issue": "Check framework and plugin patch levels"},
+        "django": {"risk": 50, "issue": "Check framework and plugin patch levels"},
+    }
+
+    findings: List[Dict[str, Any]] = []
+    for dep in dep_list:
+        name = dep.get("name", "")
+        lower = name.lower()
+        for token, rule in risk_rules.items():
+            if token in lower:
+                findings.append({
+                    "dependency": name,
+                    "version": dep.get("version", ""),
+                    "manifest": dep.get("manifest", ""),
+                    "risk_score": rule["risk"],
+                    "issue": rule["issue"],
+                    "recommended_action": "Validate against current CVE feed and upgrade if affected",
+                })
+                break
+
+    findings.sort(key=lambda x: x["risk_score"], reverse=True)
+    return {
+        "count": len(findings),
+        "vulnerabilities": findings,
+        "note": "Heuristic baseline only; integrate OSV/NVD feeds for full vulnerability intelligence.",
+    }
+
+
+# --- Phase 41: Container Security (Deep Implementation) ---
+
+@app.get("/containers")
+async def containers_inventory():
+    """List running containers and basic runtime metadata when Docker is available."""
+    docker_cmd = _resolve_first_command("docker")
+    if not docker_cmd:
+        return {
+            "available": False,
+            "count": 0,
+            "containers": [],
+            "note": "Docker CLI not found on host",
+        }
+
+    cmd = [docker_cmd, "ps", "--format", "{{.ID}}|{{.Image}}|{{.Names}}|{{.Status}}|{{.Ports}}"]
+    res = _run_cmd(cmd, timeout=8)
+    if not res.get("ok"):
+        return {
+            "available": True,
+            "count": 0,
+            "containers": [],
+            "error": res.get("stderr") or res.get("stdout") or "docker ps failed",
+        }
+
+    containers = []
+    for line in (res.get("stdout") or "").splitlines():
+        parts = line.split("|", 4)
+        if len(parts) < 5:
+            continue
+        cid, image, name, status, ports = parts
+        containers.append({
+            "id": cid,
+            "image": image,
+            "name": name,
+            "status": status,
+            "ports": ports,
+        })
+
+    return {
+        "available": True,
+        "count": len(containers),
+        "containers": containers,
+    }
+
+
+@app.get("/containers/security")
+async def containers_security():
+    """Assess container runtime security posture from inventory and simple exposure rules."""
+    inventory = await containers_inventory()
+    if not inventory.get("available"):
+        return {
+            "available": False,
+            "risk_score": 0,
+            "summary": "Container runtime unavailable",
+            "findings": [],
+        }
+
+    findings = []
+    risk = 0
+    for container in inventory.get("containers", []):
+        ports = (container.get("ports") or "").lower()
+        image = (container.get("image") or "").lower()
+
+        if "0.0.0.0" in ports:
+            findings.append({
+                "container": container.get("name"),
+                "severity": "medium",
+                "issue": "Exposed on all interfaces",
+                "evidence": ports,
+            })
+            risk += 12
+
+        if any(token in image for token in [":latest", "latest"]):
+            findings.append({
+                "container": container.get("name"),
+                "severity": "low",
+                "issue": "Mutable image tag in use",
+                "evidence": image,
+            })
+            risk += 6
+
+        if any(token in image for token in ["privileged", "debug", "test"]):
+            findings.append({
+                "container": container.get("name"),
+                "severity": "high",
+                "issue": "Potentially risky image profile",
+                "evidence": image,
+            })
+            risk += 20
+
+    risk = min(100, risk)
+    summary = "good" if risk < 20 else "moderate" if risk < 50 else "high-risk"
+    return {
+        "available": True,
+        "risk_score": risk,
+        "summary": summary,
+        "findings": findings,
+    }
+
+
+@app.post("/containers/scan")
+async def containers_scan():
+    """Run container security scan and persist scan result summary."""
+    inventory = await containers_inventory()
+    security = await containers_security()
+    record = {
+        "id": f"container-scan-{int(time.time() * 1000)}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "containers_count": inventory.get("count", 0),
+        "risk_score": security.get("risk_score", 0),
+        "summary": security.get("summary", "unknown"),
+        "findings_count": len(security.get("findings", [])),
+        "findings": security.get("findings", []),
+    }
+    _container_scan_history.append(record)
+    if len(_container_scan_history) > 500:
+        del _container_scan_history[:-500]
+
+    return {
+        "scan": record,
+        "history_count": len(_container_scan_history),
+    }
 
 
 # --- Phases 30-140: Expansion Route Registry (Module-Level) ---

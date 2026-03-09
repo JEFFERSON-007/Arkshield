@@ -65,5 +65,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 37** (`/network/traffic`, `/network/anomalies`) with traffic snapshots and anomaly detection against baseline.
 - Implemented **Phase 38** (`/insider/activity`, `/insider/risk-scores`) with insider behavior analytics and per-user risk scoring.
 - Implemented **Phase 39** (`/patch/status`, `/patch/vulnerabilities`, `/patch/recommendations`) with patch intelligence and remediation planning.
-- Implemented baseline endpoints for remaining **Phases 40-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 40** (`/supply-chain/dependencies`, `/supply-chain/vulnerabilities`) with dependency inventory and vulnerability heuristics.
+- Implemented **Phase 41** (`/containers`, `/containers/security`, `/containers/scan`) with runtime container visibility and security scans.
+- Implemented baseline endpoints for remaining **Phases 42-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

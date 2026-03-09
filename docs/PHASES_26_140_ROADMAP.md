@@ -319,18 +319,30 @@ Capabilities:
 - Consolidated hash and malware intelligence reputation decisioning
 - Metadata-aware reputation scoring and analysis history retention
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 56 - Suspicious Script Detection
+
+Endpoints:
 - `GET /scripts/detected`
 - `GET /scripts/suspicious`
 - `POST /scripts/block/{id}`
 
+Capabilities:
+- Script execution telemetry extraction and retention
+- Suspicious script scoring and regex-based block-rule controls
+
 ### Phase 57 - Living-Off-The-Land Detection
+
+Endpoints:
 - `GET /security/lolbins`
 - `GET /security/lolbins/events`
+
+Capabilities:
+- LOLBin abuse detection from command and script correlations
+- Persisted event stream with severity analytics
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 58 - System Persistence Detection
 - `GET /security/persistence`

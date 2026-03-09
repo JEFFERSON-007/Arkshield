@@ -97,7 +97,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /network/lateral-movement` + `GET /network/lateral-alerts` (Phase 53): Lateral movement risk correlation and alert tracking.
 - `GET /threat/mitre` + `GET /threat/mitre/{technique}` + `GET /threat/mitre/mapping` (Phase 54): ATT&CK technique mapping and tactic coverage from live telemetry correlations.
 - `GET /file/reputation/{hash}` + `POST /file/reputation/analyze` (Phase 55): Consolidated file reputation with hash intel and metadata-driven risk adjustment.
-- Phases 56-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /scripts/detected` + `GET /scripts/suspicious` + `POST /scripts/block/{id}` (Phase 56): Script execution telemetry, suspicious-script scoring, and block-rule enforcement.
+- `GET /security/lolbins` + `GET /security/lolbins/events` (Phase 57): Living-off-the-land binary abuse detection and event stream tracking.
+- Phases 58-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

@@ -91,6 +91,9 @@ _command_observation_history: List[Dict[str, Any]] = []
 _blocked_commands: Dict[str, Dict[str, Any]] = {}
 _lateral_movement_alerts: List[Dict[str, Any]] = []
 _file_reputation_analysis_history: List[Dict[str, Any]] = []
+_blocked_script_rules: Dict[str, Dict[str, Any]] = {}
+_script_detection_events: List[Dict[str, Any]] = []
+_lolbin_events: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -6395,6 +6398,228 @@ async def file_reputation_analyze(payload: Dict[str, Any] = Body(default_factory
         "analysis": record,
         "intel": reputation,
         "history_size": len(_file_reputation_analysis_history),
+    }
+
+
+# --- Phase 56: Suspicious Script Detection (Deep Implementation) ---
+
+async def _collect_script_execution_observations(limit: int = 300) -> List[Dict[str, Any]]:
+    """Collect script-like command executions from command telemetry for script threat analysis."""
+    history = await commands_history(limit=limit)
+    script_patterns = [
+        r"(?i)\.ps1\b",
+        r"(?i)\.vbs\b",
+        r"(?i)\.js\b",
+        r"(?i)\.hta\b",
+        r"(?i)\.bat\b",
+        r"(?i)powershell(\.exe)?\b",
+        r"(?i)wscript(\.exe)?\b",
+        r"(?i)cscript(\.exe)?\b",
+        r"(?i)mshta(\.exe)?\b",
+    ]
+
+    observations: List[Dict[str, Any]] = []
+    for cmd in history.get("commands", []):
+        command_line = str(cmd.get("command", ""))
+        matched = [pat for pat in script_patterns if re.search(pat, command_line)]
+        if not matched:
+            continue
+
+        observations.append({
+            "id": f"scr-{uuid.uuid4().hex[:10]}",
+            "timestamp": cmd.get("timestamp", datetime.now(timezone.utc).isoformat()),
+            "pid": cmd.get("pid"),
+            "user": cmd.get("user", "unknown"),
+            "process": cmd.get("process", "unknown"),
+            "command": command_line[:500],
+            "matched_patterns": matched,
+            "blocked_rule_match": cmd.get("blocked_rule_match"),
+        })
+
+    return observations
+
+
+@app.get("/scripts/detected")
+async def scripts_detected(limit: int = 100):
+    """Return recently detected script execution activity from command telemetry."""
+    limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
+    observations = await _collect_script_execution_observations(limit=max(200, limit * 2))
+
+    _script_detection_events.extend(observations)
+    if len(_script_detection_events) > 3000:
+        del _script_detection_events[:-3000]
+
+    merged = list(reversed(_script_detection_events[-max(limit * 3, 200):]))
+    deduped: List[Dict[str, Any]] = []
+    seen = set()
+    for event in merged:
+        key = (event.get("pid"), event.get("command"))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(event)
+        if len(deduped) >= limit:
+            break
+
+    return {
+        "count": len(deduped),
+        "blocked_script_rule_count": len(_blocked_script_rules),
+        "scripts": deduped,
+    }
+
+
+@app.get("/scripts/suspicious")
+async def scripts_suspicious(limit: int = 50):
+    """Score suspicious script executions using stealth, encoded payload, and block rule indicators."""
+    detected = await scripts_detected(limit=max(120, limit * 2))
+    findings: List[Dict[str, Any]] = []
+
+    for script in detected.get("scripts", []):
+        cmd = str(script.get("command", ""))
+        score = 0
+        reasons = []
+
+        if re.search(r"(?i)-enc(odedcommand)?\b", cmd):
+            score += 35
+            reasons.append("encoded payload argument used")
+        if re.search(r"(?i)-nop\b|-w\s+hidden\b", cmd):
+            score += 20
+            reasons.append("stealth execution flags detected")
+        if re.search(r"(?i)frombase64string|iex\b|invoke-expression", cmd):
+            score += 25
+            reasons.append("in-memory or obfuscated execution pattern")
+
+        for rid, rule in _blocked_script_rules.items():
+            pattern = str(rule.get("pattern", "")).strip()
+            if pattern and re.search(pattern, cmd):
+                score += 30
+                reasons.append(f"matches blocked script rule {rid}")
+
+        if score >= 35:
+            findings.append({
+                **script,
+                "risk_score": min(100, score),
+                "severity": "high" if score >= 70 else "medium",
+                "reasons": reasons,
+            })
+
+    findings.sort(key=lambda x: x.get("risk_score", 0), reverse=True)
+    limit = _safe_limit(limit, default=50, minimum=1, maximum=300)
+    return {
+        "count": min(len(findings), limit),
+        "blocked_rules": _blocked_script_rules,
+        "suspicious_scripts": findings[:limit],
+    }
+
+
+@app.post("/scripts/block/{id}")
+async def scripts_block(id: str, payload: Dict[str, Any] = Body(default_factory=dict)):
+    """Create or update a blocked script-detection rule referenced by a rule ID."""
+    rule_id = (id or "").strip().lower()
+    if not rule_id:
+        raise HTTPException(status_code=400, detail="rule id cannot be empty")
+
+    pattern = str(payload.get("pattern", "")).strip()
+    if not pattern:
+        raise HTTPException(status_code=400, detail="payload.pattern is required")
+
+    try:
+        re.compile(pattern)
+    except re.error as exc:
+        raise HTTPException(status_code=400, detail=f"invalid regex pattern: {exc}")
+
+    _blocked_script_rules[rule_id] = {
+        "id": rule_id,
+        "pattern": pattern,
+        "reason": str(payload.get("reason", "script threat policy")),
+        "created_by": str(payload.get("created_by", "system")),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "active": True,
+    }
+
+    return {
+        "status": "blocked",
+        "rule": _blocked_script_rules[rule_id],
+        "total_blocked_script_rules": len(_blocked_script_rules),
+    }
+
+
+# --- Phase 57: Living-Off-The-Land Detection (Deep Implementation) ---
+
+@app.get("/security/lolbins")
+async def security_lolbins(limit: int = 120):
+    """Detect possible LOLBin abuse from command/process telemetry and suspicious scripting patterns."""
+    limit = _safe_limit(limit, default=120, minimum=1, maximum=500)
+    commands = await commands_history(limit=max(200, limit * 2))
+    scripts = await scripts_suspicious(limit=max(80, limit))
+
+    lolbins = {
+        "powershell.exe": [r"(?i)-enc", r"(?i)-w\s+hidden", r"(?i)iex\b"],
+        "cmd.exe": [r"(?i)/c\s+", r"(?i)whoami|net\s+user|reg\s+add"],
+        "rundll32.exe": [r"(?i)javascript:", r"(?i),#\d+"],
+        "mshta.exe": [r"(?i)https?://", r"(?i)vbscript:"],
+        "regsvr32.exe": [r"(?i)/s\s+/n\s+/u", r"(?i)scrobj\.dll"],
+        "certutil.exe": [r"(?i)-urlcache", r"(?i)-decode"],
+        "wmic.exe": [r"(?i)process\s+call\s+create"],
+        "schtasks.exe": [r"(?i)/create", r"(?i)/tn\s+"],
+    }
+
+    events: List[Dict[str, Any]] = []
+    for row in commands.get("commands", []):
+        cmdline = str(row.get("command", ""))
+        lower = cmdline.lower()
+        for bin_name, patterns in lolbins.items():
+            if bin_name not in lower:
+                continue
+
+            score = 20
+            reasons = [f"LOLBin observed: {bin_name}"]
+            for pattern in patterns:
+                if re.search(pattern, cmdline):
+                    score += 18
+                    reasons.append(f"matched behavior pattern: {pattern}")
+
+            if any(bin_name.split(".")[0] in str(s.get("command", "")).lower() for s in scripts.get("suspicious_scripts", [])):
+                score += 20
+                reasons.append("correlated with suspicious script activity")
+
+            events.append({
+                "event_id": f"lol-{uuid.uuid4().hex[:10]}",
+                "timestamp": row.get("timestamp", datetime.now(timezone.utc).isoformat()),
+                "binary": bin_name,
+                "pid": row.get("pid"),
+                "user": row.get("user", "unknown"),
+                "command": cmdline[:500],
+                "risk_score": min(100, score),
+                "severity": "high" if score >= 70 else "medium" if score >= 45 else "low",
+                "reasons": reasons,
+            })
+
+    events.sort(key=lambda e: e.get("risk_score", 0), reverse=True)
+    events = events[:limit]
+
+    _lolbin_events.extend(events)
+    if len(_lolbin_events) > 4000:
+        del _lolbin_events[:-4000]
+
+    return {
+        "count": len(events),
+        "high_risk": len([e for e in events if e.get("severity") == "high"]),
+        "events": events,
+    }
+
+
+@app.get("/security/lolbins/events")
+async def security_lolbins_events(limit: int = 100):
+    """Return retained LOLBin detection events with severity distribution."""
+    limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
+    recent = list(reversed(_lolbin_events[-limit:]))
+    severity_breakdown = dict(Counter(item.get("severity", "unknown") for item in recent))
+
+    return {
+        "count": len(recent),
+        "severity_breakdown": severity_breakdown,
+        "events": recent,
     }
 
 

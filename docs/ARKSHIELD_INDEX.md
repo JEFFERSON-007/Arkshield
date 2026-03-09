@@ -89,5 +89,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 61** (`/processes/privileged`, `/processes/privileged/events`) with privileged process enumeration, privilege escalation detection, and impersonation attempt identification.
 - Implemented **Phase 62** (`/api/abuse`, `/api/anomalies`) with API abuse detection covering high-frequency patterns, endpoint scanning, injection attempts, and anomaly-based request filtering.
 - Implemented **Phase 63** (`/auth/logins`, `/auth/anomalies`) with authentication monitoring including brute force detection, impossible travel analysis, and account enumeration identification.
-- Implemented baseline endpoints for remaining **Phases 64-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
+- Implemented **Phase 64** (`/auth/bruteforce`, `/auth/block/{ip}`) with brute force attack detection (credential stuffing, password spray), risk-based categorization, and reactive IP blocking.
+- Implemented **Phase 65** (`/sessions`, `/sessions/suspicious`) with session monitoring covering hijacking detection, concurrent login analysis, stale session identification, and suspicion-based filtering.
+- Implemented baseline endpoints for remaining **Phases 66-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

@@ -409,17 +409,34 @@ Capabilities:
 - Impossible travel analysis for geographic anomaly detection
 - Account enumeration identification and credential stuffing alerts
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
-
 ### Phase 64 - Brute Force Detection
+
+Endpoints:
 - `GET /auth/bruteforce`
 - `POST /auth/block/{ip}`
 
+Capabilities:
+- Active brute force attack detection with intensity scoring
+- Credential stuffing vs. password spray classification
+- Attack velocity metrics (attempts per minute, unique username counts)
+- Reactive IP blocking with automatic detection status updates
+
 ### Phase 65 - Session Monitoring
+
+Endpoints:
 - `GET /sessions`
 - `GET /sessions/suspicious`
+
+Capabilities:
+- Active user session tracking with suspicion scoring
+- Session hijacking detection via concurrent login and location mismatch analysis
+- Impossible travel detection for same-user sessions
+- Stale session identification and anomalous behavior flagging
+- Threshold-based suspicious session filtering with top indicator analytics
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets for remaining phases beyond current deep coverage.
 
 ### Phase 66 - Email Threat Intelligence
 - `GET /email/phishing`

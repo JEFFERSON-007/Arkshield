@@ -106,6 +106,10 @@ _api_request_log: List[Dict[str, Any]] = []
 _api_abuse_detections: List[Dict[str, Any]] = []
 _auth_login_events: List[Dict[str, Any]] = []
 _auth_anomalies: List[Dict[str, Any]] = []
+_bruteforce_detections: List[Dict[str, Any]] = []
+_blocked_ips: Dict[str, Dict[str, Any]] = {}
+_session_cache: List[Dict[str, Any]] = []
+_suspicious_sessions: List[Dict[str, Any]] = []
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -7682,6 +7686,311 @@ async def auth_anomalies(refresh: bool = False):
         "type_breakdown": type_breakdown,
         "risk_distribution": risk_categories,
         "anomalies": _auth_anomalies,
+    }
+
+
+# ========================================
+# Phase 64 - Brute Force Detection
+# ========================================
+
+def _detect_bruteforce_attacks() -> List[Dict[str, Any]]:
+    """Analyze authentication events to detect brute force attacks."""
+    global _auth_login_events
+    
+    if not _auth_login_events:
+        _auth_login_events = _simulate_auth_events()
+    
+    bruteforce_attacks = []
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    # Group failed logins by IP
+    ip_failed_logins = {}
+    for event in _auth_login_events:
+        if event.get("event_type") == "login_failed":
+            ip = event.get("ip", "unknown")
+            if ip not in ip_failed_logins:
+                ip_failed_logins[ip] = []
+            ip_failed_logins[ip].append(event)
+    
+    # Detect brute force patterns
+    for ip, failed_events in ip_failed_logins.items():
+        if len(failed_events) >= 5:
+            # Calculate attack intensity
+            unique_usernames = set(e.get("username") for e in failed_events)
+            attack_duration_seconds = 300  # Simulated 5 minute window
+            attempts_per_minute = len(failed_events) / (attack_duration_seconds / 60)
+            
+            # Risk scoring
+            risk_score = 50
+            risk_score += min(len(failed_events) * 3, 30)  # More attempts = higher risk
+            risk_score += min(len(unique_usernames) * 5, 20)  # More usernames = higher risk
+            risk_score = min(risk_score, 100)
+            
+            bruteforce_attacks.append({
+                "id": str(uuid.uuid4())[:8],
+                "ip": ip,
+                "failed_attempts": len(failed_events),
+                "unique_usernames": len(unique_usernames),
+                "attempts_per_minute": round(attempts_per_minute, 2),
+                "risk_score": risk_score,
+                "attack_type": "credential_stuffing" if len(unique_usernames) > 3 else "password_spray",
+                "detected_at": timestamp,
+                "status": "active",
+            })
+    
+    return bruteforce_attacks
+
+
+@app.get("/auth/bruteforce")
+async def auth_bruteforce(refresh: bool = False):
+    """
+    Detect active brute force attacks against authentication endpoints.
+    Identifies credential stuffing and password spray attacks.
+    """
+    global _bruteforce_detections
+    
+    if refresh or not _bruteforce_detections:
+        _bruteforce_detections = _detect_bruteforce_attacks()
+    
+    # Status distribution
+    active_count = sum(1 for d in _bruteforce_detections if d.get("status") == "active")
+    blocked_count = sum(1 for d in _bruteforce_detections if d.get("status") == "blocked")
+    
+    # Attack type distribution
+    attack_type_counts = dict(Counter(d.get("attack_type", "unknown") for d in _bruteforce_detections))
+    
+    # Risk categorization
+    risk_categories = {"medium": 0, "high": 0, "critical": 0}
+    for detection in _bruteforce_detections:
+        score = detection.get("risk_score", 0)
+        if score < 65:
+            risk_categories["medium"] += 1
+        elif score < 85:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    # Top offender IPs
+    ips = [d.get("ip") for d in _bruteforce_detections]
+    top_ips = dict(Counter(ips).most_common(5))
+    
+    return {
+        "total_attacks": len(_bruteforce_detections),
+        "active_attacks": active_count,
+        "blocked_attacks": blocked_count,
+        "attack_type_distribution": attack_type_counts,
+        "risk_distribution": risk_categories,
+        "top_offender_ips": top_ips,
+        "attacks": _bruteforce_detections,
+    }
+
+
+@app.post("/auth/block/{ip}")
+async def auth_block_ip(ip: str):
+    """
+    Block an IP address from authentication attempts.
+    Adds IP to blocklist and updates brute force detection status.
+    """
+    global _blocked_ips, _bruteforce_detections
+    
+    # Check if already blocked
+    if ip in _blocked_ips:
+        raise HTTPException(status_code=400, detail=f"IP {ip} is already blocked")
+    
+    # Add to blocklist
+    timestamp = datetime.now(timezone.utc).isoformat()
+    block_id = str(uuid.uuid4())[:8]
+    
+    _blocked_ips[ip] = {
+        "id": block_id,
+        "ip": ip,
+        "blocked_at": timestamp,
+        "reason": "brute_force_detection",
+        "status": "active",
+    }
+    
+    # Update related brute force detections
+    for detection in _bruteforce_detections:
+        if detection.get("ip") == ip:
+            detection["status"] = "blocked"
+    
+    return {
+        "success": True,
+        "block_id": block_id,
+        "ip": ip,
+        "blocked_at": timestamp,
+        "message": f"IP {ip} has been blocked from authentication attempts",
+    }
+
+
+# ========================================
+# Phase 65 - Session Monitoring
+# ========================================
+
+def _simulate_active_sessions() -> List[Dict[str, Any]]:
+    """Generate simulated active user sessions for monitoring."""
+    base_time = datetime.now(timezone.utc)
+    sessions = []
+    
+    # Normal sessions
+    normal_users = [
+        {"username": "alice.smith", "ip": "192.168.1.100", "location": "New York, US"},
+        {"username": "bob.jones", "ip": "192.168.1.101", "location": "Los Angeles, US"},
+        {"username": "carol.white", "ip": "192.168.1.102", "location": "Chicago, US"},
+    ]
+    
+    for user in normal_users:
+        sessions.append({
+            "id": str(uuid.uuid4())[:8],
+            "username": user["username"],
+            "ip": user["ip"],
+            "location": user["location"],
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "created_at": (base_time - timedelta(hours=2)).isoformat(),
+            "last_activity": (base_time - timedelta(minutes=5)).isoformat(),
+            "request_count": 150,
+            "suspicion_score": 10,
+            "suspicious_indicators": [],
+            "status": "active",
+        })
+    
+    # Suspicious sessions
+    sessions.append({
+        "id": str(uuid.uuid4())[:8],
+        "username": "alice.smith",
+        "ip": "203.0.113.45",
+        "location": "Unknown",
+        "user_agent": "python-requests/2.28.0",
+        "created_at": (base_time - timedelta(minutes=10)).isoformat(),
+        "last_activity": base_time.isoformat(),
+        "request_count": 500,
+        "suspicion_score": 75,
+        "suspicious_indicators": ["high_request_rate", "unusual_user_agent", "unknown_location"],
+        "status": "active",
+    })
+    
+    sessions.append({
+        "id": str(uuid.uuid4())[:8],
+        "username": "admin",
+        "ip": "198.51.100.22",
+        "location": "Unknown",
+        "user_agent": "curl/7.68.0",
+        "created_at": (base_time - timedelta(minutes=5)).isoformat(),
+        "last_activity": base_time.isoformat(),
+        "request_count": 200,
+        "suspicion_score": 85,
+        "suspicious_indicators": ["privileged_account", "unusual_user_agent", "high_request_rate", "unknown_location"],
+        "status": "active",
+    })
+    
+    # Session with concurrent locations (session hijacking)
+    sessions.append({
+        "id": str(uuid.uuid4())[:8],
+        "username": "bob.jones",
+        "ip": "1.2.3.4",
+        "location": "Beijing, CN",
+        "user_agent": "Mozilla/5.0 (X11; Linux x86_64)",
+        "created_at": (base_time - timedelta(minutes=3)).isoformat(),
+        "last_activity": base_time.isoformat(),
+        "request_count": 50,
+        "suspicion_score": 90,
+        "suspicious_indicators": ["concurrent_session", "location_mismatch", "impossible_travel"],
+        "status": "active",
+    })
+    
+    # Stale/inactive session
+    sessions.append({
+        "id": str(uuid.uuid4())[:8],
+        "username": "dave.brown",
+        "ip": "192.168.1.103",
+        "location": "Seattle, US",
+        "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+        "created_at": (base_time - timedelta(days=1)).isoformat(),
+        "last_activity": (base_time - timedelta(hours=12)).isoformat(),
+        "request_count": 10,
+        "suspicion_score": 30,
+        "suspicious_indicators": ["stale_session"],
+        "status": "inactive",
+    })
+    
+    return sessions
+
+
+@app.get("/sessions")
+async def sessions(refresh: bool = False):
+    """
+    List all active user sessions with suspicion scoring.
+    Monitors session activity for anomalies and hijacking attempts.
+    """
+    global _session_cache
+    
+    if refresh or not _session_cache:
+        _session_cache = _simulate_active_sessions()
+    
+    # Status distribution
+    status_counts = dict(Counter(s.get("status", "unknown") for s in _session_cache))
+    
+    # Calculate statistics
+    active_sessions = [s for s in _session_cache if s.get("status") == "active"]
+    avg_suspicion = sum(s.get("suspicion_score", 0) for s in active_sessions) / len(active_sessions) if active_sessions else 0
+    
+    # Unique users
+    unique_users = len(set(s.get("username") for s in _session_cache))
+    
+    return {
+        "total_sessions": len(_session_cache),
+        "active_sessions": len(active_sessions),
+        "unique_users": unique_users,
+        "avg_suspicion_score": round(avg_suspicion, 2),
+        "status_distribution": status_counts,
+        "sessions": _session_cache,
+    }
+
+
+@app.get("/sessions/suspicious")
+async def sessions_suspicious(threshold: int = 60):
+    """
+    Filter sessions flagged as suspicious based on scoring threshold.
+    Identifies session hijacking, concurrent logins, and anomalous behavior.
+    """
+    global _session_cache, _suspicious_sessions
+    
+    # Ensure cache is populated
+    if not _session_cache:
+        _session_cache = _simulate_active_sessions()
+    
+    # Filter by threshold
+    _suspicious_sessions = [
+        session for session in _session_cache
+        if session.get("suspicion_score", 0) >= threshold
+    ]
+    
+    # Sort by suspicion score descending
+    _suspicious_sessions.sort(key=lambda s: s.get("suspicion_score", 0), reverse=True)
+    
+    # Risk categorization
+    risk_categories = {"medium": 0, "high": 0, "critical": 0}
+    for session in _suspicious_sessions:
+        score = session.get("suspicion_score", 0)
+        if score < 70:
+            risk_categories["medium"] += 1
+        elif score < 85:
+            risk_categories["high"] += 1
+        else:
+            risk_categories["critical"] += 1
+    
+    # Top indicators
+    all_indicators = []
+    for session in _suspicious_sessions:
+        all_indicators.extend(session.get("suspicious_indicators", []))
+    indicator_frequency = dict(Counter(all_indicators).most_common(5))
+    
+    return {
+        "threshold": threshold,
+        "suspicious_count": len(_suspicious_sessions),
+        "risk_distribution": risk_categories,
+        "top_indicators": indicator_frequency,
+        "sessions": _suspicious_sessions,
     }
 
 

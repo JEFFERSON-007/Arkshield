@@ -105,7 +105,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /processes/privileged` + `GET /processes/privileged/events` (Phase 61): Privileged process monitoring with privilege escalation and impersonation detection.
 - `GET /api/abuse` + `GET /api/anomalies` (Phase 62): API abuse detection with high-frequency request analysis, scanning patterns, and injection attempt identification.
 - `GET /auth/logins` + `GET /auth/anomalies` (Phase 63): Authentication monitoring with brute force detection, impossible travel tracking, and account enumeration alerts.
-- Phases 64-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /auth/bruteforce` + `POST /auth/block/{ip}` (Phase 64): Brute force attack detection with credential stuffing and password spray identification, plus IP blocking capabilities.
+- `GET /sessions` + `GET /sessions/suspicious` (Phase 65): Session monitoring with hijacking detection, concurrent login tracking, and anomalous behavior identification.
+- Phases 66-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

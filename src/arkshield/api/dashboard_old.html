@@ -1,0 +1,3163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arkshield | Autonomous Cyber Defense</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #05070a;
+            --card-bg: #0d1117;
+            --card-bg-alt: #161b22;
+            --primary: #2563eb;
+            --primary-glow: rgba(37, 99, 235, 0.4);
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.3);
+            --warning: #f59e0b;
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.3);
+            --text-main: #e6edf3;
+            --text-muted: #8b949e;
+            --border: #30363d;
+            --accent-blue: #58a6ff;
+            --accent-purple: #a78bfa;
+            --accent-cyan: #22d3ee;
+            --neon-green: #39ff14;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            line-height: 1.5;
+        }
+
+        h1,
+        h2,
+        h3 {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        aside {
+            background-color: var(--card-bg);
+            border-right: 1px solid var(--border);
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #fff 0%, #2563eb 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nav-item {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(37, 99, 235, 0.1);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background-color: rgba(37, 99, 235, 0.15);
+            color: var(--text-main);
+            border-left: 3px solid var(--primary);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 1rem;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .sidebar-footer strong {
+            color: var(--accent-blue);
+        }
+
+        /* Main Content */
+        main {
+            padding: 2rem 3rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            position: relative;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background-color: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            font-family: 'Outfit';
+        }
+
+        .stat-card.threat .stat-value {
+            color: var(--danger);
+        }
+
+        .stat-card.score .stat-value {
+            color: var(--success);
+        }
+
+        /* Content Section */
+        .content-section {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.8rem;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        tr:hover {
+            background-color: rgba(37, 99, 235, 0.03);
+        }
+
+        .severity-badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .severity-critical {
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .severity-high {
+            background-color: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .severity-medium {
+            background-color: rgba(37, 99, 235, 0.1);
+            color: var(--accent-blue);
+            border: 1px solid rgba(37, 99, 235, 0.2);
+        }
+
+        .severity-low {
+            background-color: rgba(139, 148, 158, 0.1);
+            color: var(--text-muted);
+            border: 1px solid rgba(139, 148, 158, 0.2);
+        }
+
+        /* Predictions */
+        .prediction-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .prediction-card {
+            background-color: rgba(37, 99, 235, 0.05);
+            border: 1px dashed var(--primary);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .prediction-title {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--accent-blue);
+        }
+
+        .prediction-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Glow Background */
+        .glow-bg {
+            position: fixed;
+            top: -20%;
+            right: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ===== PHASE 11: PREMIUM FEATURES ===== */
+
+        /* Gauge Ring */
+        .gauge-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .gauge-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .gauge-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-cyan);
+        }
+
+        .gauge-ring {
+            position: relative;
+            width: 100px;
+            height: 100px;
+        }
+
+        .gauge-ring svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .gauge-ring circle {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+        }
+
+        .gauge-bg {
+            stroke: var(--border);
+        }
+
+        .gauge-fill {
+            stroke: var(--accent-cyan);
+            transition: stroke-dashoffset 0.6s ease;
+        }
+
+        .gauge-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Outfit';
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .gauge-title {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .gauge-detail {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* AI Chat */
+        .chat-fab {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 20px var(--primary-glow);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .chat-fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 30px var(--primary-glow);
+        }
+
+        .chat-window {
+            position: fixed;
+            bottom: 5.5rem;
+            right: 2rem;
+            width: 380px;
+            max-height: 500px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            z-index: 1000;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            animation: chatSlideUp 0.3s ease;
+        }
+
+        @keyframes chatSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-header {
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.15) 0%, rgba(167, 139, 250, 0.15) 100%);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .chat-header-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--neon-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .chat-header-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .chat-header-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 320px;
+            min-height: 200px;
+        }
+
+        .chat-msg {
+            max-width: 85%;
+            padding: 0.75rem 1rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            animation: msgFadeIn 0.3s ease;
+        }
+
+        @keyframes msgFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .chat-msg.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--primary), var(--accent-purple));
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-msg.ai {
+            align-self: flex-start;
+            background: var(--card-bg-alt);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-input-area {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            background: var(--card-bg-alt);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            font-family: 'Inter';
+            font-size: 0.85rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .chat-input-area input:focus {
+            border-color: var(--primary);
+        }
+
+        .chat-input-area button {
+            background: var(--primary);
+            border: none;
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+
+        .chat-input-area button:hover {
+            background: #1d4ed8;
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+        }
+
+        .action-btn.kill {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .action-btn.kill:hover {
+            background: rgba(239, 68, 68, 0.25);
+        }
+
+        .action-btn.ignore {
+            background: rgba(139, 148, 158, 0.1);
+            color: var(--text-muted);
+            border: 1px solid rgba(139, 148, 158, 0.3);
+        }
+
+        .action-btn.ignore:hover {
+            background: rgba(139, 148, 158, 0.25);
+        }
+
+        /* Threat Map (Simulated) */
+        .threat-map {
+            position: relative;
+            height: 250px;
+            background: radial-gradient(ellipse at center, rgba(37, 99, 235, 0.05) 0%, transparent 70%);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .threat-map-dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: mapPulse 2s infinite;
+        }
+
+        @keyframes mapPulse {
+
+            0%,
+            100% {
+                opacity: 0.4;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.5);
+            }
+        }
+
+        /* Cyber-X Alert Banner */
+        .cyberx-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 50%, rgba(239, 68, 68, 0.15) 100%);
+            border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 0.6rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            z-index: 999;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--danger);
+            animation: bannerGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes bannerGlow {
+            from {
+                box-shadow: 0 2px 20px rgba(239, 68, 68, 0.1);
+            }
+
+            to {
+                box-shadow: 0 2px 30px rgba(239, 68, 68, 0.25);
+            }
+        }
+
+        .cyberx-banner .dismiss-btn {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--danger);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-left: 1rem;
+        }
+
+        /* Settings Controls */
+        .settings-section {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .setting-info h3 {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .setting-info p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: var(--border);
+            border-radius: 26px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-slider:before {
+            content: '';
+            position: absolute;
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background: var(--primary);
+        }
+
+        .toggle-switch input:checked+.toggle-slider:before {
+            transform: translateX(22px);
+        }
+
+        .range-slider {
+            width: 100%;
+            max-width: 300px;
+            appearance: none;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .range-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* ===== PHASE 12: POWER FEATURES ===== */
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--primary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            min-width: 300px;
+            font-size: 0.85rem;
+            animation: toastSlide 0.3s ease, toastFade 0.3s ease 4.7s forwards;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .toast.critical {
+            border-left-color: var(--danger);
+        }
+
+        .toast.success {
+            border-left-color: var(--success);
+        }
+
+        .toast-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .toast-body {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        @keyframes toastSlide {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes toastFade {
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Command Palette */
+        .cmd-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 2000;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 15vh;
+        }
+
+        .cmd-palette {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 550px;
+            max-height: 400px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: cmdIn 0.2s ease;
+        }
+
+        @keyframes cmdIn {
+            from {
+                transform: scale(0.95) translateY(-10px);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .cmd-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 1rem 1.25rem;
+            font-size: 1rem;
+            font-family: 'Inter';
+            outline: none;
+        }
+
+        .cmd-results {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .cmd-item {
+            padding: 0.75rem 1.25rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            border-bottom: 1px solid rgba(48, 54, 61, 0.3);
+        }
+
+        .cmd-item:hover,
+        .cmd-item.selected {
+            background: rgba(37, 99, 235, 0.1);
+        }
+
+        .cmd-shortcut {
+            margin-left: auto;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono';
+            background: var(--card-bg-alt);
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        /* Search Bar */
+        .search-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .search-input {
+            flex: 1;
+            background: var(--card-bg-alt);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: 'Inter';
+            font-size: 0.85rem;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+        }
+
+        /* Export Button */
+        .export-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-purple) 100%);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px var(--primary-glow);
+        }
+
+        /* Process risk bar */
+        .risk-bar {
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            overflow: hidden;
+            width: 60px;
+        }
+
+        .risk-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* Network flag */
+        .conn-flag {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .conn-safe {
+            background: var(--success);
+        }
+
+        .conn-sus {
+            background: var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Keyboard shortcut hint */
+        .kbd {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono';
+            background: var(--card-bg-alt);
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+        }
+
+        /* Activity Feed */
+        .feed-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid rgba(48, 54, 61, 0.3);
+            font-size: 0.8rem;
+            animation: feedIn 0.3s ease;
+        }
+
+        @keyframes feedIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .feed-icon {
+            font-size: 1rem;
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .feed-text {
+            color: var(--text-main);
+            flex: 1;
+        }
+
+        .feed-time {
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono';
+            font-size: 0.7rem;
+            white-space: nowrap;
+        }
+
+        /* Vuln severity badges */
+        .vuln-critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .vuln-high {
+            background: rgba(245, 158, 11, 0.15);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .vuln-medium {
+            background: rgba(37, 99, 235, 0.15);
+            color: #2563eb;
+            border: 1px solid rgba(37, 99, 235, 0.3);
+        }
+
+        .vuln-info {
+            background: rgba(139, 148, 158, 0.1);
+            color: #8b949e;
+            border: 1px solid rgba(139, 148, 158, 0.2);
+        }
+
+        .vuln-badge {
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        /* Animated Particles */
+        .particles {
+            position: fixed;
+            inset: 0;
+            z-index: -2;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: particleFloat linear infinite;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 0.3;
+            }
+
+            90% {
+                opacity: 0.3;
+            }
+
+            100% {
+                transform: translateY(-10vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Fullscreen button */
+        .fullscreen-btn {
+            position: fixed;
+            bottom: 1rem;
+            left: 1rem;
+            z-index: 999;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+
+        .fullscreen-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="cyberx-banner" class="cyberx-banner hidden">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span id="cyberx-text">CYBER-X ALERT: Elevated Threat Level Detected</span>
+        <button class="dismiss-btn" onclick="dismissCyberX()">Dismiss</button>
+    </div>
+
+    <!-- Phase 13-14 Background & UX Elements -->
+    <div id="particles" class="particles"></div>
+    <button class="fullscreen-btn" onclick="toggleFullscreen()" title="Toggle Fullscreen">⛶</button>
+    <div class="glow-bg"></div>
+    <div class="dashboard-container">
+        <aside>
+            <div class="logo">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2L3 7V12C3 17.5 7 21 12 22C17 21 21 17.5 21 12V7L12 2Z" stroke="#2563eb"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M12 8V16" stroke="#2563eb" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path d="M8 12H16" stroke="#2563eb" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+                <span>Arkshield</span>
+            </div>
+
+            <nav>
+                <a class="nav-item active" id="nav-overview" onclick="switchView('overview')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Overview
+                </a>
+                <a class="nav-item" id="nav-incidents" onclick="switchView('incidents')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Incidents
+                </a>
+                <a class="nav-item" id="nav-analytics" onclick="switchView('analytics')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    Analytics
+                </a>
+                <a class="nav-item" id="nav-threat-map" onclick="switchView('threat-map')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
+                        <circle cx="12" cy="12" r="10" />
+                    </svg>
+                    Threat Map
+                </a>
+                <a class="nav-item" id="nav-settings" onclick="switchView('settings')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Settings
+                </a>
+                <a class="nav-item" id="nav-processes" onclick="switchView('processes')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                    </svg>
+                    Processes
+                </a>
+                <a class="nav-item" id="nav-network" onclick="switchView('network')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.858 15.355-5.858 21.213 0" />
+                    </svg>
+                    Network
+                </a>
+                <a class="nav-item" id="nav-services" onclick="switchView('services')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M5 12H3l9-9 9 9h-2M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                    </svg>
+                    Services
+                </a>
+                <a class="nav-item" id="nav-vulns" onclick="switchView('vulns')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Vulnerabilities
+                </a>
+                <a class="nav-item" id="nav-hardware" onclick="switchView('hardware')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                    </svg>
+                    Hardware
+                </a>
+                <a class="nav-item" id="nav-users" onclick="switchView('users')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    Local Users
+                </a>
+                <a class="nav-item" id="nav-firewall" onclick="switchView('firewall')">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path
+                        d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                    <path d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+                </svg>
+                Firewall
+                </a>
+                <a class="nav-item" id="nav-shares" onclick="switchView('shares')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                    Network Shares
+                </a>
+                <a class="nav-item" id="nav-sessions" onclick="switchView('sessions')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    User Sessions
+                </a>
+                <a class="nav-item" id="nav-defender" onclick="switchView('defender')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Defender Status
+                </a>
+                <a class="nav-item" id="nav-drivers" onclick="switchView('drivers')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Kernel Drivers
+                </a>
+                <a class="nav-item" id="nav-junk" onclick="switchView('junk')">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Junk Sweeper
+                </a>
+            </nav>
+            <div style="margin-top:0.5rem; padding: 0.5rem 1rem;">
+                <span class="kbd">Ctrl+K</span> <span
+                    style="font-size:0.75rem;color:var(--text-muted);margin-left:0.25rem">Command palette</span>
+            </div>
+
+            <div class="sidebar-footer">
+                <strong>Arkshield v2.0.0</strong><br>
+                <span id="sidebar-uptime">Uptime: --</span><br>
+                <span id="sidebar-events">Events: --</span>
+            </div>
+        </aside>
+
+        <main id="main-content">
+            <!-- ===== OVERVIEW ===== -->
+            <div id="view-overview" class="view">
+                <header>
+                    <div>
+                        <h1>Platform Console</h1>
+                        <p style="color: var(--text-muted)">Real-time autonomous defense monitoring</p>
+                    </div>
+                    <div class="status-badge">
+                        <div class="pulse"></div> ARKSHIELD ACTIVE
+                    </div>
+                    <button class="export-btn" style="margin-left:0.5rem" onclick="exportReport()">📄 Report</button>
+                </header>
+
+                <!-- Live Activity Feed -->
+                <section class="content-section" style="margin-bottom:1.5rem;max-height:180px;overflow-y:auto">
+                    <div class="section-header">
+                        <h2>Live Activity Feed</h2><span style="font-size:0.7rem;color:var(--text-muted)">Auto-refreshes
+                            every 5s</span>
+                    </div>
+                    <div id="activity-feed"></div>
+                </section>
+
+                <!-- Health Diagnostics Panel -->
+                <section class="content-section" style="margin-bottom:1.5rem">
+                    <div class="section-header">
+                        <h2>System Health</h2><span style="font-size:0.7rem;color:var(--text-muted)">Platform diagnostics</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-top:1rem">
+                        <div style="background:var(--card-bg-alt);padding:1rem;border-radius:8px;border:1px solid var(--border)">
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem">PLATFORM</div>
+                            <div id="health-platform" style="font-family:'JetBrains Mono';font-size:0.8rem;color:var(--text-main);line-height:1.6">Loading...</div>
+                        </div>
+                        <div style="background:var(--card-bg-alt);padding:1rem;border-radius:8px;border:1px solid var(--border)">
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem">AGENT STATUS</div>
+                            <div id="health-agent" style="font-family:'JetBrains Mono';font-size:0.8rem;color:var(--text-main);line-height:1.6">Loading...</div>
+                        </div>
+                        <div style="background:var(--card-bg-alt);padding:1rem;border-radius:8px;border:1px solid var(--border)">
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem">DATABASE</div>
+                            <div id="health-database" style="font-family:'JetBrains Mono';font-size:0.8rem;color:var(--text-main);line-height:1.6">Loading...</div>
+                        </div>
+                        <div style="background:var(--card-bg-alt);padding:1rem;border-radius:8px;border:1px solid var(--border)">
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:0.5rem">COMMANDS</div>
+                            <div id="health-commands" style="font-family:'JetBrains Mono';font-size:0.8rem;color:var(--text-main);line-height:1.6">Loading...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="stats-grid">
+                    <div class="stat-card"><span class="stat-label">Events Processed</span><span class="stat-value"
+                            id="stats-events">0</span></div>
+                    <div class="stat-card"><span class="stat-label">Alerts Generated</span><span class="stat-value"
+                            id="stats-alerts">0</span></div>
+                    <div class="stat-card threat"><span class="stat-label">Threats Blocked</span><span
+                            class="stat-value" id="stats-threats">0</span></div>
+                    <div class="stat-card score"><span class="stat-label">Security Score</span><span class="stat-value"
+                            id="stats-score">100</span></div>
+                </section>
+
+                <!-- Live System Gauges -->
+                <section class="gauge-grid">
+                    <div class="gauge-card">
+                        <div class="gauge-ring">
+                            <svg viewBox="0 0 36 36">
+                                <circle class="gauge-bg" cx="18" cy="18" r="15.9" />
+                                <circle class="gauge-fill" id="gauge-cpu" cx="18" cy="18" r="15.9"
+                                    stroke-dasharray="100" stroke-dashoffset="100" />
+                            </svg>
+                            <span class="gauge-label" id="gauge-cpu-label">0%</span>
+                        </div>
+                        <span class="gauge-title">CPU</span>
+                        <span class="gauge-detail" id="gauge-cpu-detail">System processor</span>
+                    </div>
+                    <div class="gauge-card">
+                        <div class="gauge-ring">
+                            <svg viewBox="0 0 36 36">
+                                <circle class="gauge-bg" cx="18" cy="18" r="15.9" />
+                                <circle class="gauge-fill" id="gauge-mem" cx="18" cy="18" r="15.9"
+                                    stroke-dasharray="100" stroke-dashoffset="100"
+                                    style="stroke: var(--accent-purple)" />
+                            </svg>
+                            <span class="gauge-label" id="gauge-mem-label">0%</span>
+                        </div>
+                        <span class="gauge-title">Memory</span>
+                        <span class="gauge-detail" id="gauge-mem-detail">-- / -- GB</span>
+                    </div>
+                    <div class="gauge-card">
+                        <div class="gauge-ring">
+                            <svg viewBox="0 0 36 36">
+                                <circle class="gauge-bg" cx="18" cy="18" r="15.9" />
+                                <circle class="gauge-fill" id="gauge-disk" cx="18" cy="18" r="15.9"
+                                    stroke-dasharray="100" stroke-dashoffset="100" style="stroke: var(--warning)" />
+                            </svg>
+                            <span class="gauge-label" id="gauge-disk-label">0%</span>
+                        </div>
+                        <span class="gauge-title">Disk</span>
+                        <span class="gauge-detail" id="gauge-disk-detail">-- / -- GB</span>
+                    </div>
+                    <div class="gauge-card">
+                        <div class="gauge-ring">
+                            <svg viewBox="0 0 36 36">
+                                <circle class="gauge-bg" cx="18" cy="18" r="15.9" />
+                                <circle class="gauge-fill" id="gauge-net" cx="18" cy="18" r="15.9"
+                                    stroke-dasharray="100" stroke-dashoffset="100" style="stroke: var(--neon-green)" />
+                            </svg>
+                            <span class="gauge-label" id="gauge-net-label">0</span>
+                        </div>
+                        <span class="gauge-title">Network</span>
+                        <span class="gauge-detail" id="gauge-net-detail">↑ 0 MB ↓ 0 MB</span>
+                    </div>
+                </section>
+
+                <section class="content-section">
+                    <div class="section-header">
+                        <h2>Recent Incidents</h2>
+                        <button onclick="updateDashboard()"
+                            style="background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 500; cursor: pointer;">Refresh</button>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Threat Pattern</th>
+                                    <th>Severity</th>
+                                    <th>Confidence</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="alerts-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="content-section">
+                    <div class="section-header">
+                        <h2>AI Threat Predictions</h2>
+                        <button class="export-btn" onclick="exportReport()">📄 Export Report</button>
+                    </div>
+                    <div class="prediction-grid" id="predictions-grid"></div>
+                </section>
+            </div>
+
+            <!-- ===== INCIDENTS ===== -->
+            <div id="view-incidents" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Security Incidents</h1>
+                        <p style="color: var(--text-muted)">Full historical log of detected threats</p>
+                    </div>
+                </header>
+                <section class="content-section">
+                    <div style="overflow-x: auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>ID</th>
+                                    <th>Alert Title</th>
+                                    <th>Severity</th>
+                                    <th>Category</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incidents-list"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== ANALYTICS ===== -->
+            <div id="view-analytics" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Platform Analytics</h1>
+                        <p style="color: var(--text-muted)">Behavioral patterns and system metrics</p>
+                    </div>
+                </header>
+                <section class="stats-grid">
+                    <div class="stat-card"><span class="stat-label">System Uptime</span><span class="stat-value"
+                            id="analytics-uptime">--</span></div>
+                    <div class="stat-card"><span class="stat-label">Monitors Active</span><span class="stat-value"
+                            id="analytics-monitors">--</span></div>
+                    <div class="stat-card"><span class="stat-label">Detection Rate</span><span
+                            class="stat-value">94%</span></div>
+                    <div class="stat-card"><span class="stat-label">Avg Response</span><span
+                            class="stat-value">1.2s</span></div>
+                </section>
+                <section class="content-section">
+                    <div class="section-header">
+                        <h2>Event Density (24h)</h2><span style="font-size: 0.8rem; color: var(--text-muted)">Normalized
+                            telemetry volume</span>
+                    </div>
+                    <div style="height: 180px; display: flex; align-items: flex-end; justify-content: space-around; gap: 4px; padding: 1rem;"
+                        id="trend-bars"></div>
+                </section>
+            </div>
+
+            <!-- ===== THREAT MAP ===== -->
+            <div id="view-threat-map" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Threat Source Map</h1>
+                        <p style="color: var(--text-muted)">Simulated geographic origin of detected anomalies</p>
+                    </div>
+                </header>
+                <div class="threat-map" id="threat-map-canvas"></div>
+                <section class="content-section" style="margin-top:1.5rem">
+                    <div class="section-header">
+                        <h2>Active Threat Sources</h2>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Region</th>
+                                <th>Attack Type</th>
+                                <th>Frequency</th>
+                                <th>Threat Level</th>
+                            </tr>
+                        </thead>
+                        <tbody id="threat-sources"></tbody>
+                    </table>
+                </section>
+            </div>
+
+            <!-- ===== PROCESSES ===== -->
+            <div id="view-processes" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Process Explorer</h1>
+                        <p style="color: var(--text-muted)">Live system processes with AI risk scoring</p>
+                    </div>
+                    <button class="export-btn" onclick="refreshProcesses()">↻ Refresh</button>
+                </header>
+                <section class="content-section">
+                    <div class="search-bar">
+                        <input type="text" class="search-input" id="proc-search"
+                            placeholder="Search processes by name, PID, or user..." oninput="filterProcesses()">
+                    </div>
+                    <div style="overflow-x:auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>PID</th>
+                                    <th>Name</th>
+                                    <th>CPU %</th>
+                                    <th>MEM %</th>
+                                    <th>Risk</th>
+                                    <th>Status</th>
+                                    <th>User</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="proc-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== NETWORK ===== -->
+            <div id="view-network" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Network Connections</h1>
+                        <p style="color: var(--text-muted)">Active connections with threat detection</p>
+                    </div>
+                    <button class="export-btn" onclick="refreshNetwork()">↻ Refresh</button>
+                </header>
+                <section class="stats-grid" style="grid-template-columns: repeat(3,1fr); margin-bottom: 1.5rem;">
+                    <div class="stat-card"><span class="stat-label">Total Connections</span><span class="stat-value"
+                            id="net-total">0</span></div>
+                    <div class="stat-card"><span class="stat-label">Established</span><span class="stat-value"
+                            id="net-established" style="color:var(--success)">0</span></div>
+                    <div class="stat-card threat"><span class="stat-label">Suspicious</span><span class="stat-value"
+                            id="net-suspicious">0</span></div>
+                </section>
+                <section class="content-section">
+                    <div style="overflow-x:auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Local</th>
+                                    <th>Remote</th>
+                                    <th>Protocol</th>
+                                    <th>PID</th>
+                                    <th>Flag</th>
+                                </tr>
+                            </thead>
+                            <tbody id="net-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== SERVICES ===== -->
+            <div id="view-services" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Windows Services</h1>
+                        <p style="color: var(--text-muted)">Security analysis of system services</p>
+                    </div>
+                    <button class="export-btn" onclick="refreshServices()">↻ Refresh</button>
+                </header>
+                <section class="content-section">
+                    <div class="search-bar">
+                        <input type="text" class="search-input" id="svc-search" placeholder="Search services..."
+                            oninput="filterServices()">
+                    </div>
+                    <div style="overflow-x:auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Display Name</th>
+                                    <th>Status</th>
+                                    <th>Start Type</th>
+                                    <th>Risk</th>
+                                    <th>PID</th>
+                                </tr>
+                            </thead>
+                            <tbody id="svc-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== VULNERABILITIES ===== -->
+            <div id="view-vulns" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Vulnerability Scanner</h1>
+                        <p style="color: var(--text-muted)">System security assessment and CVE checking</p>
+                    </div>
+                    <button class="export-btn" onclick="runVulnScan()">🛡️ Run Scan</button>
+                </header>
+                <section class="stats-grid" style="grid-template-columns: repeat(3,1fr); margin-bottom: 1.5rem;">
+                    <div class="stat-card"><span class="stat-label">Total Issues</span><span class="stat-value"
+                            id="vuln-total">--</span></div>
+                    <div class="stat-card threat"><span class="stat-label">Critical</span><span class="stat-value"
+                            id="vuln-critical">--</span></div>
+                    <div class="stat-card score"><span class="stat-label">Security Grade</span><span class="stat-value"
+                            id="vuln-grade">--</span></div>
+                </section>
+                <section class="content-section">
+                    <div id="vuln-list"></div>
+                </section>
+                <section class="content-section" style="margin-top:1.5rem">
+                    <div class="section-header">
+                        <h2>🔐 Breach Checker</h2>
+                    </div>
+                    <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.75rem">Check if a password has
+                        appeared in known data breaches (uses HIBP k-anonymity — safe and private).</p>
+                    <div style="display:flex;gap:0.5rem;max-width:500px">
+                        <input type="text" id="breach-input" placeholder="Enter email or password to check..."
+                            style="flex:1;background:var(--card-bg-alt);border:1px solid var(--border);color:var(--text-main);padding:0.6rem 1rem;border-radius:8px;font-family:'JetBrains Mono';font-size:0.85rem;outline:none">
+                        <button onclick="checkBreach()"
+                            style="background:var(--danger);color:white;border:none;padding:0.6rem 1rem;border-radius:8px;font-weight:600;cursor:pointer">Check</button>
+                    </div>
+                    <div id="breach-result" style="margin-top:0.75rem;font-family:'JetBrains Mono';font-size:0.8rem">
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== HARDWARE ===== -->
+            <div id="view-hardware" class="view hidden">
+                <header>
+                    <div>
+                        <h1>System Hardware</h1>
+                        <p style="color: var(--text-muted)">Operating System and Hardware Telemetry</p>
+                    </div>
+                    <button class="export-btn" onclick="refreshHardware()">↻ Refresh</button>
+                </header>
+                <section class="stats-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 1.5rem;">
+                    <div class="stat-card"><span class="stat-label">OS</span><span class="stat-value" id="hw-os"
+                            style="font-size:1.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">--</span>
+                    </div>
+                    <div class="stat-card"><span class="stat-label">CPU Cores</span><span class="stat-value"
+                            id="hw-cores">--</span></div>
+                    <div class="stat-card score"><span class="stat-label">RAM Usage</span><span class="stat-value"
+                            id="hw-ram">--</span></div>
+                    <div class="stat-card threat"><span class="stat-label">CPU Load</span><span class="stat-value"
+                            id="hw-load">--</span></div>
+                </section>
+                <section class="content-section" id="hw-details"
+                    style="font-family:'JetBrains Mono';font-size:0.85rem;line-height:1.6">
+                    <p style="color:var(--text-muted)">Loading telemetry...</p>
+                </section>
+            </div>
+
+            <!-- ===== LOCAL USERS ===== -->
+            <div id="view-users" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Local Windows Users</h1>
+                        <p style="color: var(--text-muted)">Audit privilege escalation and active accounts</p>
+                    </div>
+                    <button class="export-btn" onclick="refreshUsers()">↻ Refresh</button>
+                </header>
+                <section class="content-section">
+                    <div style="overflow-x:auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Administrator Status</th>
+                                    <th>Account Active</th>
+                                    <th>Risk Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usr-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== FIREWALL EXPLORER ===== -->
+            <div id="view-firewall" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Firewall Explorer</h1>
+                        <p style="color: var(--text-muted)">Windows Defender firewall rules analysis</p>
+                    </div>
+                    <button class="export-btn" onclick="refreshFirewall()">↻ Refresh</button>
+                </header>
+                <section class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 1.5rem;">
+                    <div class="stat-card"><span class="stat-label">Total Selected Rules</span><span class="stat-value"
+                            id="fw-total">--</span></div>
+                    <div class="stat-card score"><span class="stat-label">Allowed</span><span class="stat-value"
+                            id="fw-allow">--</span></div>
+                    <div class="stat-card threat"><span class="stat-label">Blocked</span><span class="stat-value"
+                            id="fw-block">--</span></div>
+                </section>
+                <section class="content-section">
+                    <div class="search-bar">
+                        <input type="text" class="search-input" id="fw-search" placeholder="Search rules or programs..."
+                            oninput="filterFirewall()">
+                    </div>
+                    <div style="height:400px;overflow-y:auto;overflow-x:auto">
+                        <table style="font-size:0.8rem">
+                            <thead style="position:sticky;top:0;background:var(--card-bg)">
+                                <tr>
+                                    <th>Rule Name</th>
+                                    <th>Enabled</th>
+                                    <th>Direction</th>
+                                    <th>Action</th>
+                                    <th>Program</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fw-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== NETWORK SHARES ===== -->
+            <div id="view-shares" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Network Shares</h1>
+                        <p style="color: var(--text-muted)">Open file and print shares enumeration</p>
+                    </div>
+                    <button class="export-btn" onclick="refreshShares()">↻ Refresh</button>
+                </header>
+                <section class="content-section">
+                    <div style="overflow-x:auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Share Name</th>
+                                    <th>Resource Path</th>
+                                    <th>Properties</th>
+                                    <th>Risk Level</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sha-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== USER SESSIONS ===== -->
+            <div id="view-sessions" class="view hidden">
+                <header>
+                    <div>
+                        <h1>User Sessions</h1>
+                        <p style="color: var(--text-muted)">Active console and RDP sessions analysis</p>
+                    </div>
+                    <button class="export-btn" onclick="refreshSessions()">↻ Refresh</button>
+                </header>
+                <section class="content-section">
+                    <div style="overflow-x:auto">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Session Name</th>
+                                    <th>Username</th>
+                                    <th>Session ID</th>
+                                    <th>State</th>
+                                    <th>Risk</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ses-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== DEFENDER STATUS ===== -->
+            <div id="view-defender" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Defender Integrity</h1>
+                        <p style="color: var(--text-muted)">Windows Security policy and protection audit</p>
+                    </div>
+                    <button class="export-btn" onclick="refreshDefender()">↻ Audit</button>
+                </header>
+                <section class="content-section" id="def-details"
+                    style="font-family:'JetBrains Mono';font-size:0.9rem;line-height:1.6">
+                    <p style="color:var(--text-muted)">Running PowerShell query...</p>
+                </section>
+            </div>
+
+            <!-- ===== KERNEL DRIVERS ===== -->
+            <div id="view-drivers" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Kernel Drivers</h1>
+                        <p style="color: var(--text-muted)">System drivers and module enumeration</p>
+                    </div>
+                    <button class="export-btn" onclick="refreshDrivers()">↻ Refresh</button>
+                </header>
+                <section class="stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 1.5rem;">
+                    <div class="stat-card"><span class="stat-label">Total Drivers</span><span class="stat-value"
+                            id="drv-total">--</span></div>
+                    <div class="stat-card threat"><span class="stat-label">Boot/Kernel Mode</span><span
+                            class="stat-value" id="drv-kernel">--</span></div>
+                </section>
+                <section class="content-section">
+                    <div class="search-bar">
+                        <input type="text" class="search-input" id="drv-search" placeholder="Search driver modules..."
+                            oninput="filterDrivers()">
+                    </div>
+                    <div style="height:400px;overflow-y:auto;overflow-x:auto">
+                        <table style="font-size:0.8rem">
+                            <thead style="position:sticky;top:0;background:var(--card-bg)">
+                                <tr>
+                                    <th>Module Name</th>
+                                    <th>Display Name</th>
+                                    <th>Type</th>
+                                    <th>Start Mode</th>
+                                    <th>State</th>
+                                </tr>
+                            </thead>
+                            <tbody id="drv-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== JUNK SWEEPER ===== -->
+            <div id="view-junk" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Junk Sweeper</h1>
+                        <p style="color: var(--text-muted)">Scan temporary files and reclaim storage safely</p>
+                    </div>
+                    <div style="display:flex;gap:0.5rem">
+                        <button class="export-btn" onclick="removeSelectedJunk()" style="background:var(--danger);display:none" id="junk-remove-btn">🗑️ Remove Selected</button>
+                        <button class="export-btn" onclick="refreshJunk()">↻ Scan</button>
+                    </div>
+                </header>
+                <section class="stats-grid" style="grid-template-columns: repeat(2, 1fr); margin-bottom: 1.5rem;">
+                    <div class="stat-card"><span class="stat-label">Junk Files Found</span><span class="stat-value"
+                            id="junk-total-files">--</span></div>
+                    <div class="stat-card threat"><span class="stat-label">Reclaimable Space (MB)</span><span
+                            class="stat-value" id="junk-total-size">--</span></div>
+                </section>
+                <section class="content-section">
+                    <div style="margin-bottom:1rem;font-family:'JetBrains Mono';font-size:0.8rem;color:var(--text-muted)">
+                        <div id="junk-paths">Scan paths: --</div>
+                    </div>
+                    <div style="height:400px;overflow-y:auto;overflow-x:auto">
+                        <table style="font-size:0.8rem">
+                            <thead style="position:sticky;top:0;background:var(--card-bg)">
+                                <tr>
+                                    <th style="width:40px"><input type="checkbox" id="junk-select-all" onchange="toggleSelectAllJunk()"></th>
+                                    <th>File</th>
+                                    <th>Path</th>
+                                    <th>Size (MB)</th>
+                                    <th>Categories</th>
+                                </tr>
+                            </thead>
+                            <tbody id="junk-body"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== SETTINGS ===== -->
+            <div id="view-settings" class="view hidden">
+                <header>
+                    <div>
+                        <h1>Arkshield Settings</h1>
+                        <p style="color: var(--text-muted)">Configure agent behavior, AI intelligence, and response
+                            policies</p>
+                    </div>
+                </header>
+                <section class="content-section">
+                    <div class="settings-section">
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <h3>Autonomous Kill</h3>
+                                <p>Automatically terminate processes flagged as malicious.</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" checked><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <h3>File Quarantine</h3>
+                                <p>Move suspicious files to a secure sandbox on detection.</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" checked><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <h3>Network Isolation</h3>
+                                <p>Block outbound connections from compromised processes.</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox"><span
+                                    class="toggle-slider"></span></label>
+                        </div>
+                        <div class="setting-row">
+                            <div class="setting-info">
+                                <h3>Cyber-X Alert Mode</h3>
+                                <p>Display a global banner when critical threats are active.</p>
+                            </div>
+                            <label class="toggle-switch"><input type="checkbox" id="cyberx-toggle"
+                                    onchange="toggleCyberX()"><span class="toggle-slider"></span></label>
+                        </div>
+                        <div style="padding: 1rem 0;">
+                            <h3 style="margin-bottom:0.75rem">Detection Sensitivity</h3>
+                            <input type="range" class="range-slider" min="1" max="100" value="85"
+                                id="sensitivity-slider">
+                            <div
+                                style="display:flex; justify-content:space-between; max-width:300px; font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem">
+                                <span>Cautious</span><span>Balanced</span><span>Aggressive</span>
+                            </div>
+                        </div>
+                        <div style="padding: 1rem 0;">
+                            <h3 style="margin-bottom:0.75rem">API Configuration</h3>
+                            <p
+                                style="font-size:0.85rem; color: var(--text-muted); font-family: 'JetBrains Mono'; background: var(--card-bg-alt); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border);">
+                                Endpoint: http://localhost:8000<br>
+                                Auth: None (Development Mode)<br>
+                                CORS: Allowed (*)
+                            </p>
+                        </div>
+                        <div style="padding: 1rem 0; border-top: 1px solid var(--border);">
+                            <h3 style="margin-bottom:0.5rem">🤖 Nova AI Configuration</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Paste your LLM
+                                API key to make Nova intelligent. Supports OpenRouter, OpenAI, Groq, and any
+                                OpenAI-compatible API.</p>
+                            <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 500px;">
+                                <div>
+                                    <label
+                                        style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:0.35rem">API
+                                        Key</label>
+                                    <input type="password" id="ai-api-key" placeholder="Paste your API key here..."
+                                        style="width:100%;background:var(--card-bg-alt);border:1px solid var(--border);color:var(--text-main);padding:0.6rem 1rem;border-radius:8px;font-family:'JetBrains Mono';font-size:0.8rem;outline:none">
+                                    <span id="ai-key-status"
+                                        style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;display:block"></span>
+                                </div>
+                                <div>
+                                    <label
+                                        style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:0.35rem">Base
+                                        URL</label>
+                                    <input type="text" id="ai-base-url" value="https://openrouter.ai/api/v1"
+                                        style="width:100%;background:var(--card-bg-alt);border:1px solid var(--border);color:var(--text-main);padding:0.6rem 1rem;border-radius:8px;font-family:'JetBrains Mono';font-size:0.8rem;outline:none">
+                                </div>
+                                <div>
+                                    <label
+                                        style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:0.35rem">Model</label>
+                                    <input type="text" id="ai-model" value="google/gemini-2.0-flash-001"
+                                        style="width:100%;background:var(--card-bg-alt);border:1px solid var(--border);color:var(--text-main);padding:0.6rem 1rem;border-radius:8px;font-family:'JetBrains Mono';font-size:0.8rem;outline:none">
+                                </div>
+                                <button onclick="saveAIConfig()"
+                                    style="background:var(--primary);color:white;border:none;padding:0.6rem 1.5rem;border-radius:8px;font-weight:600;cursor:pointer;align-self:flex-start;transition:background 0.2s">💾
+                                    Save AI Configuration</button>
+                                <div id="ai-save-status" style="font-size:0.8rem;color:var(--success)"></div>
+                            </div>
+                        </div>
+                        <div style="padding: 1rem 0; border-top: 1px solid var(--border);">
+                            <h3 style="margin-bottom:0.5rem">🔍 IP Reputation Lookup</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Check any IP
+                                address against public threat intelligence databases.</p>
+                            <div style="display:flex;gap:0.5rem;max-width:500px">
+                                <input type="text" id="ip-lookup-input" placeholder="e.g. 8.8.8.8"
+                                    style="flex:1;background:var(--card-bg-alt);border:1px solid var(--border);color:var(--text-main);padding:0.6rem 1rem;border-radius:8px;font-family:'JetBrains Mono';font-size:0.85rem;outline:none">
+                                <button onclick="lookupIP()"
+                                    style="background:var(--accent-cyan);color:var(--bg-color);border:none;padding:0.6rem 1rem;border-radius:8px;font-weight:600;cursor:pointer">Lookup</button>
+                            </div>
+                            <div id="ip-result"
+                                style="margin-top:0.75rem;font-family:'JetBrains Mono';font-size:0.8rem;color:var(--text-muted)">
+                            </div>
+                        </div>
+                        <div style="padding: 1rem 0; border-top: 1px solid var(--border);">
+                            <h3 style="margin-bottom:0.5rem">System Access (Windows/Linux)</h3>
+                            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Manage supported OS settings directly from Arkshield. Some actions require administrator/root privileges.</p>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0.75rem;max-width:700px">
+                                <div style="background:var(--card-bg-alt);padding:0.8rem;border:1px solid var(--border);border-radius:8px">
+                                    <div style="font-size:0.75rem;color:var(--text-muted)">Firewall</div>
+                                    <div id="sys-firewall-status" style="margin:0.4rem 0 0.7rem">Unknown</div>
+                                    <div style="display:flex;gap:0.5rem">
+                                        <button class="export-btn" style="padding:0.45rem 0.7rem" onclick="applySystemSetting('firewall_enabled', true)">Enable</button>
+                                        <button class="export-btn" style="padding:0.45rem 0.7rem" onclick="applySystemSetting('firewall_enabled', false)">Disable</button>
+                                    </div>
+                                </div>
+                                <div style="background:var(--card-bg-alt);padding:0.8rem;border:1px solid var(--border);border-radius:8px">
+                                    <div style="font-size:0.75rem;color:var(--text-muted)">Remote Access</div>
+                                    <div id="sys-remote-status" style="margin:0.4rem 0 0.7rem">Unknown</div>
+                                    <div style="display:flex;gap:0.5rem">
+                                        <button class="export-btn" style="padding:0.45rem 0.7rem" onclick="applySystemSetting('remote_access_enabled', true)">Enable</button>
+                                        <button class="export-btn" style="padding:0.45rem 0.7rem" onclick="applySystemSetting('remote_access_enabled', false)">Disable</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="margin-top:0.8rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+                                <button class="export-btn" style="padding:0.45rem 0.7rem" onclick="loadSystemSettings()">Refresh System Settings</button>
+                                <span id="sys-access-meta" style="font-size:0.75rem;color:var(--text-muted)">Not loaded</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- AI Chat FAB -->
+    <button class="chat-fab" id="chat-fab" onclick="toggleChat()">
+        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+        </svg>
+    </button>
+
+    <!-- AI Chat Window -->
+    <div class="chat-window hidden" id="chat-window">
+        <div class="chat-header">
+            <div class="chat-header-dot"></div>
+            <div>
+                <div class="chat-header-title">Nova — AI Security Analyst</div>
+                <div class="chat-header-sub">Powered by Arkshield Intelligence</div>
+            </div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="chat-msg ai">Hello! I'm Nova, your AI security analyst. Ask me about your system's threat
+                landscape, recent alerts, or security recommendations.</div>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Ask Nova about security..."
+                onkeydown="if(event.key==='Enter') sendChat()">
+            <button onclick="sendChat()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "http://localhost:8000";
+        let currentView = 'overview';
+        let chatOpen = false;
+
+        // ===== NAVIGATION =====
+        function switchView(viewId) {
+            currentView = viewId;
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.getElementById(`nav-${viewId}`).classList.add('active');
+            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+            document.getElementById(`view-${viewId}`).classList.remove('hidden');
+
+            if (viewId === 'threat-map') initThreatMap();
+            if (viewId === 'analytics') initTrendBars();
+            updateDashboard();
+        }
+
+        // ===== DASHBOARD UPDATE =====
+        async function updateDashboard() {
+            try {
+                // Stats
+                const stats = await (await fetch(`${API_BASE}/stats`)).json();
+                if (currentView === 'overview') {
+                    document.getElementById('stats-events').innerText = stats.events_processed.toLocaleString();
+                    document.getElementById('stats-alerts').innerText = stats.alerts_generated;
+                    document.getElementById('stats-threats').innerText = stats.threats_detected;
+                    document.getElementById('stats-score').innerText = stats.security_score.toFixed(0);
+                }
+                document.getElementById('sidebar-events').innerText = `Events: ${stats.events_processed.toLocaleString()}`;
+
+                // Alerts
+                const alerts = await (await fetch(`${API_BASE}/alerts`)).json();
+
+                if (currentView === 'overview') {
+                    renderOverviewAlerts(alerts.slice(0, 8));
+                } else if (currentView === 'incidents') {
+                    renderIncidents(alerts);
+                }
+
+                // System Metrics (for gauges on overview)
+                if (currentView === 'overview') {
+                    try {
+                        const metrics = await (await fetch(`${API_BASE}/system/metrics`)).json();
+                        updateGauge('cpu', metrics.cpu_percent);
+                        updateGauge('mem', metrics.memory_percent);
+                        document.getElementById('gauge-mem-detail').innerText = `${metrics.memory_used_gb} / ${metrics.memory_total_gb} GB`;
+                        updateGauge('disk', metrics.disk_percent);
+                        document.getElementById('gauge-disk-detail').innerText = `${metrics.disk_used_gb} / ${metrics.disk_total_gb} GB`;
+                        const netTotal = metrics.net_sent_mb + metrics.net_recv_mb;
+                        updateGauge('net', Math.min(netTotal / 100, 100));
+                        document.getElementById('gauge-net-label').innerText = `${Math.round(netTotal)}`;
+                        document.getElementById('gauge-net-detail').innerText = `↑ ${metrics.net_sent_mb} MB  ↓ ${metrics.net_recv_mb} MB`;
+                    } catch (e) { /* metrics endpoint may not be available yet */ }
+                }
+
+                // Analytics
+                if (currentView === 'analytics') {
+                    try {
+                        const status = await (await fetch(`${API_BASE}/status`)).json();
+                        document.getElementById('analytics-uptime').innerText = formatUptime(status.uptime_seconds);
+                        document.getElementById('analytics-monitors').innerText = status.monitors.length;
+                        document.getElementById('sidebar-uptime').innerText = `Uptime: ${formatUptime(status.uptime_seconds)}`;
+                    } catch (e) { }
+                }
+
+                // Predictions
+                if (currentView === 'overview') {
+                    try {
+                        const predictions = await (await fetch(`${API_BASE}/predictions`)).json();
+                        const grid = document.getElementById('predictions-grid');
+                        grid.innerHTML = '';
+                        if (!predictions.length) {
+                            grid.innerHTML = '<p style="color:var(--text-muted);font-size:0.8rem;">No active attack chains detected.</p>';
+                        }
+                        predictions.forEach(p => {
+                            grid.innerHTML += `<div class="prediction-card"><div class="prediction-title">${p.predicted_tactic.replace(/_/g, ' ').toUpperCase()}</div><div class="prediction-desc">${p.recommendation}</div><div style="font-size:0.7rem;margin-top:0.5rem;color:var(--accent-blue)">Based on: ${p.based_on}</div></div>`;
+                        });
+                    } catch (e) { }
+                }
+
+            } catch (err) {
+                console.error("Dashboard sync error:", err);
+            }
+        }
+
+        // ===== HEALTH DIAGNOSTICS =====
+        async function updateHealthPanel() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                if (!response.ok) {
+                    throw new Error(`Health check failed: ${response.status} ${response.statusText}`);
+                }
+                const health = await response.json();
+                
+                // Platform info
+                const platformHTML = `
+                    OS: <span style="color:var(--accent-cyan)">${health.platform.os} ${health.platform.release}</span><br>
+                    Python: <span style="color:var(--accent-cyan)">${health.platform.python}</span><br>
+                    Hostname: <span style="color:var(--accent-cyan)">${health.platform.hostname || 'N/A'}</span>
+                `;
+                document.getElementById('health-platform').innerHTML = platformHTML;
+                
+                // Agent status
+                const agentStatus = health.agent.running ? '<span style="color:var(--success)">✓ ACTIVE</span>' : '<span style="color:var(--danger)">✗ INACTIVE</span>';
+                const agentHTML = `
+                    Status: ${agentStatus}<br>
+                    Monitors: <span style="color:var(--accent-cyan)">${health.agent.monitors.length}</span><br>
+                    Uptime: <span style="color:var(--accent-cyan)">${formatUptime(health.agent.uptime_seconds)}</span>
+                `;
+                document.getElementById('health-agent').innerHTML = agentHTML;
+                
+                // Database info
+                const dbExists = health.database.exists ? '<span style="color:var(--success)">✓ EXISTS</span>' : '<span style="color:var(--danger)">✗ MISSING</span>';
+                const dbHTML = `
+                    Status: ${dbExists}<br>
+                    Size: <span style="color:var(--accent-cyan)">${health.database.size_mb ? health.database.size_mb.toFixed(2) + ' MB' : 'N/A'}</span><br>
+                    Path: <span style="color:var(--text-muted);font-size:0.7rem">${health.database.path.split('\\').pop() || 'N/A'}</span>
+                `;
+                document.getElementById('health-database').innerHTML = dbHTML;
+                
+                // Commands availability
+                let cmdHTML = '';
+                for (const [cmd, available] of Object.entries(health.commands)) {
+                    const icon = available ? '<span style="color:var(--success)">✓</span>' : '<span style="color:var(--text-muted)">✗</span>';
+                    cmdHTML += `${icon} ${cmd}<br>`;
+                }
+                document.getElementById('health-commands').innerHTML = cmdHTML;
+                
+            } catch (err) {
+                console.error("Health check failed:", err);
+                const errorMsg = `<span style="color:var(--danger)">Connection failed</span><br><span style="font-size:0.7rem;color:var(--text-muted)">${err.message}</span>`;
+                document.getElementById('health-platform').innerHTML = errorMsg;
+                document.getElementById('health-agent').innerHTML = '<span style="color:var(--warning)">Unavailable</span>';
+                document.getElementById('health-database').innerHTML = '<span style="color:var(--warning)">Unavailable</span>';
+                document.getElementById('health-commands').innerHTML = '<span style="color:var(--warning)">Unavailable</span>';
+                
+                // Show toast only on first error
+                if (!window._healthErrorShown) {
+                    showToast('API Connection Warning', 'Health diagnostics unavailable. Check if API server is running on port 8000.', 'critical');
+                    window._healthErrorShown = true;
+                }
+            }
+        }
+
+        // ===== RENDERERS =====
+        function renderOverviewAlerts(alerts) {
+            const tbody = document.getElementById('alerts-body');
+            tbody.innerHTML = '';
+            if (!alerts.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:2rem;">System secure. No incidents.</td></tr>';
+                return;
+            }
+            alerts.forEach(a => {
+                const sev = getSeverityClass(a.severity);
+                tbody.innerHTML += `<tr>
+                    <td style="color:var(--text-muted)">${formatTime(a.created_at)}</td>
+                    <td style="font-weight:500">${a.title}</td>
+                    <td><span class="severity-badge severity-${sev}">${getSeverityLabel(a.severity)}</span></td>
+                    <td><div style="width:50px;height:5px;background:#333;border-radius:3px;overflow:hidden"><div style="width:${(a.confidence || 0.85) * 100}%;height:100%;background:var(--accent-blue)"></div></div></td>
+                    <td><span style="color:var(--success)">MITIGATED</span></td>
+                    <td><button class="action-btn kill" onclick="killProcess(${a.process?.pid || 0})">Kill</button> <button class="action-btn ignore">Ignore</button></td>
+                </tr>`;
+            });
+        }
+
+        function renderIncidents(alerts) {
+            const list = document.getElementById('incidents-list');
+            list.innerHTML = '';
+            alerts.forEach(a => {
+                const sev = getSeverityClass(a.severity);
+                list.innerHTML += `<tr>
+                    <td style="color:var(--text-muted)">${formatTime(a.created_at)}</td>
+                    <td style="font-family:'JetBrains Mono';font-size:0.7rem">${(a.alert_id || '').substring(0, 8)}</td>
+                    <td>${a.title}</td>
+                    <td><span class="severity-badge severity-${sev}">${getSeverityLabel(a.severity)}</span></td>
+                    <td>${a.category || 'Threat'}</td>
+                    <td><span style="color:var(--success)">RESOLVED</span></td>
+                    <td><button class="action-btn kill" onclick="killProcess(${a.process?.pid || 0})">Kill</button> <button class="action-btn ignore">Ignore</button></td>
+                </tr>`;
+            });
+        }
+
+        // ===== GAUGES =====
+        function updateGauge(id, percent) {
+            const circumference = 2 * Math.PI * 15.9;
+            const offset = circumference - (percent / 100) * circumference;
+            document.getElementById(`gauge-${id}`).setAttribute('stroke-dasharray', circumference);
+            document.getElementById(`gauge-${id}`).setAttribute('stroke-dashoffset', offset);
+            if (id !== 'net') {
+                document.getElementById(`gauge-${id}-label`).innerText = `${Math.round(percent)}%`;
+            }
+
+            // Color shift for high usage
+            const el = document.getElementById(`gauge-${id}`);
+            if (percent > 85) el.style.stroke = 'var(--danger)';
+            else if (percent > 60) el.style.stroke = 'var(--warning)';
+        }
+
+        // ===== THREAT MAP =====
+        function initThreatMap() {
+            const map = document.getElementById('threat-map-canvas');
+            map.innerHTML = '';
+            const threats = [
+                { x: 20, y: 30, color: 'var(--danger)', label: 'Eastern Europe' },
+                { x: 75, y: 45, color: 'var(--warning)', label: 'East Asia' },
+                { x: 45, y: 55, color: 'var(--danger)', label: 'Middle East' },
+                { x: 15, y: 60, color: 'var(--accent-cyan)', label: 'South America' },
+                { x: 55, y: 25, color: 'var(--warning)', label: 'Russia' },
+                { x: 85, y: 70, color: 'var(--accent-purple)', label: 'Southeast Asia' },
+            ];
+            threats.forEach(t => {
+                const dot = document.createElement('div');
+                dot.className = 'threat-map-dot';
+                dot.style.cssText = `left:${t.x}%;top:${t.y}%;background:${t.color};box-shadow:0 0 12px ${t.color};animation-delay:${Math.random() * 2}s`;
+                dot.title = t.label;
+                map.appendChild(dot);
+            });
+
+            const tbody = document.getElementById('threat-sources');
+            tbody.innerHTML = '';
+            const sources = [
+                ['Eastern Europe', 'Credential Stuffing', '142/hr', 'CRITICAL'],
+                ['East Asia', 'Port Scanning', '89/hr', 'HIGH'],
+                ['Middle East', 'DDoS Amplification', '56/hr', 'HIGH'],
+                ['South America', 'Botnet C2', '34/hr', 'MEDIUM'],
+                ['Russia', 'APT Exfiltration', '12/hr', 'CRITICAL'],
+                ['Southeast Asia', 'Cryptomining', '67/hr', 'MEDIUM'],
+            ];
+            sources.forEach(s => {
+                const sevClass = s[3] === 'CRITICAL' ? 'critical' : s[3] === 'HIGH' ? 'high' : 'medium';
+                tbody.innerHTML += `<tr><td>${s[0]}</td><td>${s[1]}</td><td>${s[2]}</td><td><span class="severity-badge severity-${sevClass}">${s[3]}</span></td></tr>`;
+            });
+        }
+
+        // ===== ANALYTICS TRENDS =====
+        function initTrendBars() {
+            const container = document.getElementById('trend-bars');
+            container.innerHTML = '';
+            const data = [30, 45, 60, 85, 40, 20, 55, 90, 70, 35, 50, 75, 65, 42, 88];
+            data.forEach((val, i) => {
+                const bar = document.createElement('div');
+                const isAnomaly = val > 80;
+                bar.style.cssText = `height:${val}%;width:100%;background:${isAnomaly ? 'var(--danger)' : 'var(--primary)'};opacity:${0.3 + val / 150};border-radius:4px;transition:height 0.5s ease ${i * 0.05}s`;
+                container.appendChild(bar);
+            });
+        }
+
+        // ===== AI CHAT =====
+        function toggleChat() {
+            chatOpen = !chatOpen;
+            document.getElementById('chat-window').classList.toggle('hidden', !chatOpen);
+            if (chatOpen) document.getElementById('chat-input').focus();
+        }
+
+        async function sendChat() {
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            input.value = '';
+
+            const messages = document.getElementById('chat-messages');
+            messages.innerHTML += `<div class="chat-msg user">${msg}</div>`;
+            messages.scrollTop = messages.scrollHeight;
+
+            // Show typing indicator
+            const typingId = 'typing-' + Date.now();
+            messages.innerHTML += `<div class="chat-msg ai" id="${typingId}" style="opacity:0.5">Nova is analyzing...</div>`;
+            messages.scrollTop = messages.scrollHeight;
+
+            try {
+                const res = await fetch(`${API_BASE}/analyst/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: msg })
+                });
+                const data = await res.json();
+                document.getElementById(typingId).remove();
+                messages.innerHTML += `<div class="chat-msg ai">${data.response}</div>`;
+            } catch (e) {
+                document.getElementById(typingId).remove();
+                messages.innerHTML += `<div class="chat-msg ai" style="color:var(--danger)">Connection to Arkshield AI failed. Ensure the API is running.</div>`;
+            }
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        // ===== INTERACTIVE ACTIONS =====
+        async function killProcess(pid) {
+            if (!pid) { alert('No process ID associated with this alert.'); return; }
+            if (!confirm(`Terminate process ${pid}?`)) return;
+            try {
+                const res = await fetch(`${API_BASE}/actions/kill/${pid}`, { method: 'POST' });
+                const data = await res.json();
+                alert(`Process ${pid} terminated successfully.`);
+                updateDashboard();
+            } catch (e) {
+                alert(`Failed to terminate process ${pid}.`);
+            }
+        }
+
+        // ===== CYBER-X MODE =====
+        function toggleCyberX() {
+            const banner = document.getElementById('cyberx-banner');
+            const toggle = document.getElementById('cyberx-toggle');
+            banner.classList.toggle('hidden', !toggle.checked);
+        }
+        function dismissCyberX() {
+            document.getElementById('cyberx-banner').classList.add('hidden');
+            document.getElementById('cyberx-toggle').checked = false;
+        }
+
+        // ===== HELPERS =====
+        function getSeverityClass(s) { return s >= 4 ? 'critical' : s >= 3 ? 'high' : s >= 2 ? 'medium' : 'low'; }
+        function getSeverityLabel(s) { return ['INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'][s] || 'HIGH'; }
+        function formatTime(ts) { return new Date(ts).toLocaleTimeString(); }
+        function formatUptime(sec) {
+            const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.floor(sec % 60);
+            return `${h}h ${m}m ${s}s`;
+        }
+
+        // ===== AI CONFIG =====
+        async function saveAIConfig() {
+            const apiKey = document.getElementById('ai-api-key').value;
+            const baseUrl = document.getElementById('ai-base-url').value;
+            const model = document.getElementById('ai-model').value;
+            const status = document.getElementById('ai-save-status');
+            status.innerText = 'Saving...';
+            status.style.color = 'var(--text-muted)';
+            try {
+                const res = await fetch(`${API_BASE}/config/ai`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ api_key: apiKey, base_url: baseUrl, model: model, max_tokens: 512, temperature: 0.7 })
+                });
+                const data = await res.json();
+                status.innerText = `\u2705 Saved! Model: ${data.model}`;
+                status.style.color = 'var(--success)';
+                loadAIConfig();
+            } catch (e) {
+                status.innerText = '\u274c Failed to save. Is the API running?';
+                status.style.color = 'var(--danger)';
+            }
+        }
+
+        async function loadAIConfig() {
+            try {
+                const config = await (await fetch(`${API_BASE}/config/ai`)).json();
+                document.getElementById('ai-base-url').value = config.base_url || '';
+                document.getElementById('ai-model').value = config.model || '';
+                const keyStatus = document.getElementById('ai-key-status');
+                if (config.api_key_set) {
+                    keyStatus.innerText = `\u2705 Key configured: ${config.api_key_masked}`;
+                    keyStatus.style.color = 'var(--success)';
+                } else {
+                    keyStatus.innerText = '\u26a0\ufe0f No API key set. Nova is running in offline mode.';
+                    keyStatus.style.color = 'var(--warning)';
+                }
+            } catch (e) { }
+        }
+
+        // ===== IP LOOKUP =====
+        async function lookupIP() {
+            const ip = document.getElementById('ip-lookup-input').value.trim();
+            if (!ip) return;
+            const result = document.getElementById('ip-result');
+            result.innerText = 'Looking up...';
+            try {
+                const data = await (await fetch(`${API_BASE}/threat-intel/ip/${ip}`)).json();
+                let html = `<div style="background:var(--card-bg-alt);padding:1rem;border-radius:8px;border:1px solid var(--border);margin-top:0.5rem">`;
+                if (data.geo) {
+                    html += `<strong style="color:var(--accent-cyan)">${data.ip}</strong><br>`;
+                    html += `Country: ${data.geo.country || 'Unknown'}<br>`;
+                    html += `Region: ${data.geo.regionName || 'Unknown'}<br>`;
+                    html += `City: ${data.geo.city || 'Unknown'}<br>`;
+                    html += `ISP: ${data.geo.isp || 'Unknown'}<br>`;
+                    html += `Org: ${data.geo.org || 'Unknown'}<br>`;
+                    html += `AS: ${data.geo.as || 'Unknown'}`;
+                } else {
+                    html += `No geo data available for ${ip}`;
+                }
+                html += `</div>`;
+                result.innerHTML = html;
+            } catch (e) {
+                result.innerHTML = `<span style="color:var(--danger)">Lookup failed. Ensure the API is running.</span>`;
+            }
+        }
+
+        // ===== PROCESS EXPLORER =====
+        let allProcesses = [];
+        async function refreshProcesses() {
+            try {
+                allProcesses = await (await fetch(`${API_BASE}/processes`)).json();
+                renderProcesses(allProcesses);
+                showToast('Processes Refreshed', `${allProcesses.length} processes loaded`, 'success');
+            } catch (e) { showToast('Error', 'Failed to load processes', 'critical'); }
+        }
+        function renderProcesses(procs) {
+            const body = document.getElementById('proc-body');
+            body.innerHTML = '';
+            procs.forEach(p => {
+                const riskColor = p.risk_score > 50 ? 'var(--danger)' : p.risk_score > 20 ? 'var(--warning)' : 'var(--success)';
+                body.innerHTML += `<tr>
+                    <td style="font-family:'JetBrains Mono';font-size:0.75rem">${p.pid}</td>
+                    <td style="font-weight:500">${p.name}</td>
+                    <td>${p.cpu}%</td>
+                    <td>${p.memory}%</td>
+                    <td><div class="risk-bar"><div class="risk-fill" style="width:${p.risk_score}%;background:${riskColor}"></div></div> <span style="font-size:0.7rem;color:${riskColor}">${p.risk_score}</span></td>
+                    <td><span style="color:${p.status === 'running' ? 'var(--success)' : 'var(--text-muted)'}">${p.status}</span></td>
+                    <td style="font-size:0.75rem;color:var(--text-muted)">${(p.user || 'SYSTEM').split('\\\\').pop()}</td>
+                    <td><button class="action-btn kill" onclick="killProcess(${p.pid})">Kill</button></td>
+                </tr>`;
+            });
+        }
+        function filterProcesses() {
+            const q = document.getElementById('proc-search').value.toLowerCase();
+            const filtered = allProcesses.filter(p => p.name.toLowerCase().includes(q) || String(p.pid).includes(q) || (p.user || '').toLowerCase().includes(q));
+            renderProcesses(filtered);
+        }
+
+        // ===== NETWORK MONITOR =====
+        async function refreshNetwork() {
+            try {
+                const conns = await (await fetch(`${API_BASE}/network/connections`)).json();
+                const body = document.getElementById('net-body');
+                body.innerHTML = '';
+                let established = 0, suspicious = 0;
+                conns.forEach(c => {
+                    if (c.status === 'ESTABLISHED') established++;
+                    if (c.suspicious) suspicious++;
+                    const flagClass = c.suspicious ? 'conn-sus' : 'conn-safe';
+                    body.innerHTML += `<tr style="${c.suspicious ? 'background:rgba(239,68,68,0.05)' : ''}">
+                        <td><span style="color:${c.status === 'ESTABLISHED' ? 'var(--success)' : 'var(--text-muted)'}">${c.status}</span></td>
+                        <td style="font-family:'JetBrains Mono';font-size:0.75rem">${c.local}</td>
+                        <td style="font-family:'JetBrains Mono';font-size:0.75rem">${c.remote}</td>
+                        <td>${c.type}</td>
+                        <td style="font-family:'JetBrains Mono';font-size:0.75rem">${c.pid || '--'}</td>
+                        <td><span class="conn-flag ${flagClass}"></span>${c.suspicious ? 'SUSPICIOUS' : 'Clean'}</td>
+                    </tr>`;
+                });
+                document.getElementById('net-total').innerText = conns.length;
+                document.getElementById('net-established').innerText = established;
+                document.getElementById('net-suspicious').innerText = suspicious;
+                if (suspicious > 0) showToast('Network Alert', `${suspicious} suspicious connections detected!`, 'critical');
+            } catch (e) { showToast('Error', 'Failed to load connections', 'critical'); }
+        }
+
+        // ===== TOAST NOTIFICATIONS =====
+        function showToast(title, body, type = 'info') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'toast-container';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<div class="toast-title">${title}</div><div class="toast-body">${body}</div>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        // ===== COMMAND PALETTE =====
+        const commands = [
+            { icon: '🏠', label: 'Go to Overview', action: () => switchView('overview'), shortcut: '1' },
+            { icon: '⚠️', label: 'Go to Incidents', action: () => switchView('incidents'), shortcut: '2' },
+            { icon: '📊', label: 'Go to Analytics', action: () => switchView('analytics'), shortcut: '3' },
+            { icon: '🌐', label: 'Go to Threat Map', action: () => switchView('threat-map'), shortcut: '4' },
+            { icon: '⚙️', label: 'Go to Settings', action: () => switchView('settings'), shortcut: '5' },
+            { icon: '🖥️', label: 'Go to Process Explorer', action: () => { switchView('processes'); refreshProcesses(); }, shortcut: '6' },
+            { icon: '📡', label: 'Go to Network Monitor', action: () => { switchView('network'); refreshNetwork(); }, shortcut: '7' },
+            { icon: '⚙️', label: 'Go to Services Monitor', action: () => { switchView('services'); refreshServices(); }, shortcut: '8' },
+            { icon: '🛡️', label: 'Go to Vulnerability Scanner', action: () => { switchView('vulns'); runVulnScan(); }, shortcut: '9' },
+            { icon: '💻', label: 'Go to System Hardware', action: () => { switchView('hardware'); refreshHardware(); } },
+            { icon: '👥', label: 'Go to Local Users', action: () => { switchView('users'); refreshUsers(); } },
+            { icon: '🔥', label: 'Go to Firewall Rules', action: () => { switchView('firewall'); refreshFirewall(); } },
+            { icon: '📂', label: 'Go to Network Shares', action: () => { switchView('shares'); refreshShares(); } },
+            { icon: '👤', label: 'Go to User Sessions', action: () => { switchView('sessions'); refreshSessions(); } },
+            { icon: '🛡️', label: 'Go to Defender Status', action: () => { switchView('defender'); refreshDefender(); } },
+            { icon: '🚗', label: 'Go to Kernel Drivers', action: () => { switchView('drivers'); refreshDrivers(); } },
+            { icon: '🧹', label: 'Go to Junk Sweeper', action: () => { switchView('junk'); refreshJunk(); } },
+            { icon: '🔄', label: 'Refresh Dashboard', action: () => updateDashboard(), shortcut: 'R' },
+            { icon: '💬', label: 'Open AI Chat', action: () => { if (!chatOpen) toggleChat(); }, shortcut: 'C' },
+            { icon: '📄', label: 'Export Security Report', action: () => exportReport() },
+            { icon: '🔍', label: 'Trigger Deep Scan', action: () => triggerScan() },
+            { icon: '🚨', label: 'Toggle Cyber-X Mode', action: () => { document.getElementById('cyberx-toggle').checked = !document.getElementById('cyberx-toggle').checked; toggleCyberX(); } },
+        ];
+
+        function openCommandPalette() {
+            if (document.getElementById('cmd-overlay')) return;
+            const overlay = document.createElement('div');
+            overlay.id = 'cmd-overlay';
+            overlay.className = 'cmd-overlay';
+            overlay.onclick = (e) => { if (e.target === overlay) closeCommandPalette(); };
+            overlay.innerHTML = `<div class="cmd-palette">
+                <input type="text" class="cmd-input" placeholder="Type a command..." oninput="filterCommands(this.value)" autofocus>
+                <div class="cmd-results" id="cmd-results"></div>
+            </div>`;
+            document.body.appendChild(overlay);
+            overlay.querySelector('.cmd-input').focus();
+            renderCommands('');
+        }
+
+        function closeCommandPalette() {
+            const overlay = document.getElementById('cmd-overlay');
+            if (overlay) overlay.remove();
+        }
+
+        function renderCommands(query) {
+            const results = document.getElementById('cmd-results');
+            if (!results) return;
+            const filtered = commands.filter(c => c.label.toLowerCase().includes(query.toLowerCase()));
+            results.innerHTML = '';
+            filtered.forEach((cmd, i) => {
+                results.innerHTML += `<div class="cmd-item ${i === 0 ? 'selected' : ''}" onclick="executeCommand(${commands.indexOf(cmd)})">
+                    <span>${cmd.icon}</span>
+                    <span>${cmd.label}</span>
+                    ${cmd.shortcut ? `<span class="cmd-shortcut">${cmd.shortcut}</span>` : ''}
+                </div>`;
+            });
+        }
+        function filterCommands(q) { renderCommands(q); }
+
+        function executeCommand(index) {
+            closeCommandPalette();
+            commands[index].action();
+        }
+
+        // ===== EXPORT REPORT =====
+        async function exportReport() {
+            showToast('Generating Report', 'Compiling security assessment...', 'info');
+            try {
+                const report = await (await fetch(`${API_BASE}/export/report`)).json();
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `arkshield_report_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('Report Exported', 'Security assessment saved to disk', 'success');
+            } catch (e) {
+                showToast('Export Failed', 'Could not generate report', 'critical');
+            }
+        }
+
+        // ===== DEEP SCAN =====
+        async function triggerScan() {
+            showToast('Deep Scan', 'Initiating full system scan...', 'info');
+            try {
+                const result = await (await fetch(`${API_BASE}/scan`, { method: 'POST' })).json();
+                showToast('Scan Complete', `Captured ${result.events_captured} events`, 'success');
+                updateDashboard();
+            } catch (e) {
+                showToast('Scan Failed', 'Could not complete system scan', 'critical');
+            }
+        }
+
+        // ===== KEYBOARD SHORTCUTS =====
+        document.addEventListener('keydown', (e) => {
+            // Ctrl+K: Command Palette
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                openCommandPalette();
+            }
+            // Escape: Close overlays
+            if (e.key === 'Escape') {
+                closeCommandPalette();
+                if (chatOpen) toggleChat();
+            }
+            // Enter in command palette
+            if (e.key === 'Enter' && document.getElementById('cmd-overlay')) {
+                const selected = document.querySelector('.cmd-item.selected');
+                if (selected) selected.click();
+            }
+        });
+
+        // ===== SERVICES MONITOR =====
+        let allServices = [];
+        async function refreshServices() {
+            try {
+                allServices = await (await fetch(`${API_BASE}/system/services`)).json();
+                renderServices(allServices);
+                showToast('Services Refreshed', `${allServices.length} services loaded`, 'success');
+            } catch (e) { showToast('Error', 'Failed to load services', 'critical'); }
+        }
+        function renderServices(svcs) {
+            const body = document.getElementById('svc-body');
+            body.innerHTML = '';
+            svcs.forEach(s => {
+                const riskColor = s.risk_score > 30 ? 'var(--danger)' : s.risk_score > 10 ? 'var(--warning)' : 'var(--success)';
+                body.innerHTML += `<tr>
+                    <td style="font-weight:500">${s.name}</td>
+                    <td style="font-size:0.8rem;color:var(--text-muted)">${s.display_name}</td>
+                    <td><span style="color:${s.status === 'running' ? 'var(--success)' : 'var(--text-muted)'}">${s.status}</span></td>
+                    <td>${s.start_type}</td>
+                    <td><div class="risk-bar"><div class="risk-fill" style="width:${s.risk_score}%;background:${riskColor}"></div></div></td>
+                    <td style="font-family:'JetBrains Mono';font-size:0.75rem">${s.pid || '--'}</td>
+                </tr>`;
+            });
+        }
+        function filterServices() {
+            const q = document.getElementById('svc-search').value.toLowerCase();
+            const filtered = allServices.filter(s => s.name.toLowerCase().includes(q) || s.display_name.toLowerCase().includes(q));
+            renderServices(filtered);
+        }
+
+        // ===== VULNERABILITY SCANNER =====
+        async function runVulnScan() {
+            showToast('Scanning System', 'Checking for known vulnerabilities...', 'info');
+            try {
+                const data = await (await fetch(`${API_BASE}/security/vulnerabilities`)).json();
+                document.getElementById('vuln-total').innerText = data.total;
+                document.getElementById('vuln-critical').innerText = data.critical;
+                document.getElementById('vuln-grade').innerText = data.critical > 0 ? 'F' : data.total > 0 ? 'C' : 'A';
+                document.getElementById('vuln-grade').style.color = data.critical > 0 ? 'var(--danger)' : data.total > 0 ? 'var(--warning)' : 'var(--success)';
+
+                const list = document.getElementById('vuln-list');
+                list.innerHTML = '';
+                if (data.vulnerabilities.length === 0) {
+                    list.innerHTML = '<div style="padding:1rem;background:var(--card-bg-alt);border-radius:8px;text-align:center;color:var(--success)">No known vulnerabilities detected. System is secure.</div>';
+                } else {
+                    data.vulnerabilities.forEach(v => {
+                        const bg = v.severity === 'CRITICAL' ? 'rgba(239,68,68,0.1)' : v.severity === 'HIGH' ? 'rgba(245,158,11,0.1)' : 'var(--card-bg-alt)';
+                        list.innerHTML += `<div style="background:${bg};padding:1rem;border-radius:8px;border:1px solid var(--border);margin-bottom:1rem">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+                                <strong>${v.id}</strong>
+                                <span class="vuln-badge vuln-${v.severity.toLowerCase()}">${v.severity}</span>
+                            </div>
+                            <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem"><strong>Component:</strong> ${v.component}</div>
+                            <p style="font-size:0.9rem;margin-bottom:0.5rem">${v.description}</p>
+                            <div style="font-size:0.8rem;background:var(--card-bg);padding:0.5rem;border-radius:4px;border:1px solid rgba(48,54,61,0.5)">
+                                <strong style="color:var(--accent-cyan)">Fix:</strong> ${v.fix}
+                            </div>
+                        </div>`;
+                    });
+                }
+                showToast('Scan Complete', `Found ${data.total} vulnerabilites`, data.critical > 0 ? 'critical' : 'success');
+            } catch (e) { showToast('Error', 'Vulnerability scan failed', 'critical'); }
+        }
+
+        // ===== BREACH CHECKER =====
+        async function checkBreach() {
+            const inputElement = document.getElementById('breach-input');
+            const email = inputElement.value.trim();
+            if (!email) return;
+            const resEl = document.getElementById('breach-result');
+            resEl.innerHTML = '<span style="color:var(--text-muted)">Scanning database (k-anonymity)...</span>';
+            try {
+                const data = await (await fetch(`${API_BASE}/security/breach-check/${encodeURIComponent(email)}`)).json();
+                if (data.is_compromised) {
+                    resEl.innerHTML = `<div style="padding:1rem;background:rgba(239,68,68,0.1);border-left:4px solid var(--danger);border-radius:6px">
+                        <strong style="color:var(--danger)">⚠️ COMPROMISED</strong><br><br>
+                        This password/email appeared in <strong>${data.exposure_count.toLocaleString()}</strong> known data breaches.<br><br>
+                        <span style="color:var(--text-muted);font-size:0.8rem">Action Required: Change this password immediately.</span>
+                    </div>`;
+                } else {
+                    resEl.innerHTML = `<div style="padding:1rem;background:rgba(16,185,129,0.1);border-left:4px solid var(--success);border-radius:6px">
+                        <strong style="color:var(--success)">✅ SECURE</strong><br><br>
+                        No matches found in known data breaches.<br>
+                        <span style="color:var(--text-muted);font-size:0.8rem">${data.domain_risk}</span>
+                    </div>`;
+                }
+            } catch (e) { resEl.innerHTML = '<span style="color:var(--danger)">Check failed. API offline.</span>'; }
+        }
+
+        // ===== LIVE ACTIVITY FEED =====
+        async function updateActivityFeed() {
+            try {
+                const feed = await (await fetch(`${API_BASE}/activity/feed?limit=8`)).json();
+                const container = document.getElementById('activity-feed');
+                if (!container) return;
+                let html = '';
+                feed.forEach(item => {
+                    const timeStr = new Date(item.time * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const color = item.severity > 3 ? 'var(--danger)' : item.severity > 1 ? 'var(--warning)' : 'var(--text-main)';
+                    html += `<div class="feed-item">
+                        <div class="feed-icon">${item.icon}</div>
+                        <div class="feed-text" style="color:${color}">${item.text}</div>
+                        <div class="feed-time">${timeStr}</div>
+                    </div>`;
+                });
+                container.innerHTML = html;
+            } catch (e) { }
+        }
+
+        // ===== PARTICLES ENGINE =====
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = `${Math.random() * 100}vw`;
+                p.style.top = `${Math.random() * 100}vh`;
+                p.style.animationDuration = `${5 + Math.random() * 15}s`;
+                p.style.animationDelay = `${Math.random() * 5}s`;
+                container.appendChild(p);
+            }
+        }
+
+        // ===== FULLSCREEN TOGGLE =====
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch((err) => {
+                    showToast('Error', 'Unable to enter fullscreen', 'critical');
+                });
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+            }
+        }
+
+        // ===== HARDWARE DASHBOARD =====
+        async function refreshHardware() {
+            try {
+                const hw = await (await fetch(`${API_BASE}/system/hardware`)).json();
+                if (hw.error) { document.getElementById('hw-details').innerText = 'Hardware scan failed: ' + hw.error; return; }
+
+                document.getElementById('hw-os').innerText = hw.os.name;
+                document.getElementById('hw-cores').innerText = String(hw.cpu.cores) + ' Cores';
+                document.getElementById('hw-ram').innerText = hw.memory.used_percent + '%';
+                document.getElementById('hw-load').innerText = hw.cpu.current_usage + '%';
+
+                let details = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                    <div>
+                        <strong style="color:var(--accent-blue)">⚡ Processor</strong><br>
+                        Model: ${hw.cpu.name || 'Unknown'}<br>
+                        Logical Threads: ${hw.cpu.threads}<br>
+                        Current Load: ${hw.cpu.current_usage}%<br>
+                    </div>
+                    <div>
+                        <strong style="color:var(--accent-purple)">💻 Operating System</strong><br>
+                        OS Version: ${hw.os.version}<br>
+                        Build: ${hw.os.release || hw.os.build || 'Unknown'}<br>
+                        Architecture: ${hw.os.architecture}<br>
+                    </div>
+                    <div style="grid-column: 1 / -1; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+                        <strong style="color:var(--success)">📝 Memory Allocation</strong><br>
+                        Total Physical RAM: ${hw.memory.total_gb} GB<br>
+                        Active Utilization: ${hw.memory.used_percent}%
+                    </div>
+                </div>`;
+                document.getElementById('hw-details').innerHTML = details;
+                showToast('Hardware Scan', 'Telemetry updated successfully', 'success');
+            } catch (e) { showToast('Error', 'Hardware fetch failed', 'critical'); }
+        }
+
+        // ===== LOCAL USERS AUDIT =====
+        async function refreshUsers() {
+            try {
+                const users = await (await fetch(`${API_BASE}/security/users`)).json();
+                const body = document.getElementById('usr-body');
+                body.innerHTML = '';
+                users.forEach(u => {
+                    const riskColor = u.risk_score > 40 ? 'var(--danger)' : u.risk_score > 10 ? 'var(--warning)' : 'var(--success)';
+                    const adminBadge = u.is_admin ? '<span class="vuln-badge vuln-critical">Admin</span>' : '<span style="color:var(--text-muted)">Standard</span>';
+                    const activeBadge = u.is_active ? '<span style="color:var(--success)">Yes</span>' : '<span style="color:var(--text-muted)">Disabled</span>';
+                    body.innerHTML += `<tr>
+                        <td style="font-weight:600">${u.username}</td>
+                        <td>${adminBadge}</td>
+                        <td>${activeBadge}</td>
+                        <td><div class="risk-bar"><div class="risk-fill" style="width:${u.risk_score}%;background:${riskColor}"></div></div></td>
+                    </tr>`;
+                });
+                showToast('User Audit', `Scanned ${users.length} local accounts`, 'success');
+            } catch (e) { showToast('Error', 'Failed to audit users', 'critical'); }
+        }
+
+        // ===== FIREWALL EXPLORER =====
+        let allRules = [];
+        async function refreshFirewall() {
+            try {
+                allRules = await (await fetch(`${API_BASE}/security/firewall`)).json();
+
+                let allow = 0, block = 0;
+                allRules.forEach(r => { if (r.action === 'Allow') allow++; else if (r.action === 'Block') block++; });
+
+                document.getElementById('fw-total').innerText = allRules.length;
+                document.getElementById('fw-allow').innerText = allow;
+                document.getElementById('fw-block').innerText = block;
+
+                renderFirewall(allRules);
+                showToast('Firewall Scanner', `Parsed ${allRules.length} Windows Defender rules`, 'success');
+            } catch (e) { showToast('Error', 'Failed to fetch firewall rules', 'critical'); }
+        }
+        function renderFirewall(rules) {
+            const body = document.getElementById('fw-body');
+            body.innerHTML = '';
+            rules.forEach(r => {
+                const color = r.action === 'Allow' ? 'var(--success)' : 'var(--danger)';
+                const enabled = r.enabled ? '<span style="color:var(--success)">Yes</span>' : '<span style="color:var(--text-muted)">No</span>';
+                body.innerHTML += `<tr>
+                    <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.name}">${r.name}</td>
+                    <td>${enabled}</td>
+                    <td>${r.direction || 'Any'}</td>
+                    <td><strong style="color:${color}">${r.action || 'Unknown'}</strong></td>
+                    <td style="font-family:'JetBrains Mono';font-size:0.75rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.program || 'Any'}">${r.program || 'Any'}</td>
+                </tr>`;
+            });
+        }
+        // ===== NETWORK SHARES =====
+        async function refreshShares() {
+            try {
+                const shares = await (await fetch(`${API_BASE}/security/shares`)).json();
+                const body = document.getElementById('sha-body');
+                body.innerHTML = '';
+                shares.forEach(s => {
+                    const riskColor = s.risk_score > 40 ? 'var(--danger)' : s.risk_score > 20 ? 'var(--warning)' : 'var(--success)';
+                    const adminBadge = s.is_admin ? '<span class="vuln-badge vuln-critical">Admin Share</span>' : '<span style="color:var(--text-muted)">Standard</span>';
+                    body.innerHTML += `<tr>
+                        <td style="font-weight:600">${s.name}</td>
+                        <td style="font-family:'JetBrains Mono';font-size:0.8rem">${s.resource}</td>
+                        <td>${adminBadge}</td>
+                        <td><div class="risk-bar"><div class="risk-fill" style="width:${Math.max(s.risk_score, 5)}%;background:${riskColor}"></div></div></td>
+                    </tr>`;
+                });
+                showToast('Shares Enumerated', `Discovered ${shares.length} active network shares`, 'success');
+            } catch (e) { showToast('Error', 'Failed to enumerate network shares', 'critical'); }
+        }
+
+        // ===== USER SESSIONS =====
+        async function refreshSessions() {
+            try {
+                const sessions = await (await fetch(`${API_BASE}/security/sessions`)).json();
+                const body = document.getElementById('ses-body');
+                body.innerHTML = '';
+                sessions.forEach(s => {
+                    const riskColor = s.risk_score > 40 ? 'var(--danger)' : s.risk_score > 20 ? 'var(--warning)' : 'var(--success)';
+                    const stateColor = s.state.toLowerCase() === 'active' ? 'var(--success)' : 'var(--text-muted)';
+                    body.innerHTML += `<tr>
+                        <td style="font-weight:600">${s.session_name}</td>
+                        <td>${s.username}</td>
+                        <td style="font-family:'JetBrains Mono';font-size:0.8rem">${s.id}</td>
+                        <td><strong style="color:${stateColor}">${s.state}</strong></td>
+                        <td><div class="risk-bar"><div class="risk-fill" style="width:${Math.max(s.risk_score, 5)}%;background:${riskColor}"></div></div></td>
+                    </tr>`;
+                });
+                showToast('Sessions Audit', `Discovered ${sessions.length} local/remote sessions`, 'success');
+            } catch (e) { showToast('Error', 'Failed to identify user sessions', 'critical'); }
+        }
+
+        // ===== DEFENDER STATUS =====
+        async function refreshDefender() {
+            try {
+                const status = await (await fetch(`${API_BASE}/security/defender`)).json();
+                if (status.error || status.available === false) {
+                    const reason = status.error || 'Endpoint unavailable';
+                    const recommendation = status.recommendation ? `<br><span style="color:var(--text-muted)">${status.recommendation}</span>` : '';
+                    document.getElementById('def-details').innerHTML = `<div style="color:var(--warning)">Audit unavailable: ${reason}${recommendation}</div>`;
+                    showToast('Defender Audit', reason, 'critical');
+                    return;
+                }
+
+                const getIcon = (boolVar) => boolVar ? '<span style="color:var(--success)">✅ Enabled</span>' : '<span style="color:var(--danger)">❌ Disabled</span>';
+                const overallRisk = status.risk_score > 0 ? '<strong style="color:var(--danger)">System At Risk - Protection Disabled</strong>' : '<strong style="color:var(--success)">Fully Protected</strong>';
+
+                let details = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;padding:1rem;background:var(--card-bg-alt);border-radius:12px">
+                    <div>
+                        <h3 style="margin-bottom:1rem;color:var(--accent-blue)">Core Protection</h3>
+                        <p>Real-Time Protection: ${getIcon(status.active)}</p>
+                        <p>Anti-Malware Service: ${getIcon(status.am_service)}</p>
+                        <p>Anti-Spyware Engine: ${getIcon(status.av_enabled)}</p>
+                    </div>
+                    <div>
+                        <h3 style="margin-bottom:1rem;color:var(--accent-purple)">Advanced Modules</h3>
+                        <p>On-Access Scanning: ${getIcon(status.on_access)}</p>
+                        <p>Internet/Office Guard (IOAV): ${getIcon(status.ioav_enabled)}</p>
+                    </div>
+                    <div style="grid-column: 1 / -1; margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;text-align:center">
+                        <h2 style="margin-bottom:0.5rem">Status Assessment</h2>
+                        <div style="font-size:1.2rem">${overallRisk}</div>
+                        <p style="color:var(--text-muted);font-size:0.8rem;margin-top:0.5rem">Windows Defender is Windows' native anti-malware and threat protection module.</p>
+                    </div>
+                </div>`;
+                document.getElementById('def-details').innerHTML = details;
+                showToast('Defender Audit', 'Security policy validation complete', 'success');
+            } catch (e) { showToast('Error', 'Failed to retrieve Defender policy', 'critical'); }
+        }
+
+        // ===== JUNK SWEEPER =====
+        let allJunkFiles = [];
+        async function refreshJunk() {
+            try {
+                const result = await (await fetch(`${API_BASE}/system/storage/junk`)).json();
+                if (result.error) {
+                    document.getElementById('junk-body').innerHTML = `<tr><td colspan="5" style="color:var(--danger)">Scan failed: ${result.error}</td></tr>`;
+                    showToast('Junk Sweeper', result.error, 'critical');
+                    return;
+                }
+
+                allJunkFiles = result.junk_files || [];
+                const summary = result.summary || {};
+                document.getElementById('junk-total-files').innerText = summary.total_files || 0;
+                document.getElementById('junk-total-size').innerText = (summary.total_size_mb || 0).toFixed(2);
+                document.getElementById('junk-paths').innerText = `Scan paths: ${(summary.scan_paths || []).join(', ') || 'N/A'}`;
+                document.getElementById('junk-remove-btn').style.display = allJunkFiles.length > 0 ? 'block' : 'none';
+
+                const body = document.getElementById('junk-body');
+                body.innerHTML = '';
+                if (!allJunkFiles.length) {
+                    body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No junk files detected in configured scan paths.</td></tr>';
+                } else {
+                    allJunkFiles.forEach((f, idx) => {
+                        body.innerHTML += `<tr>
+                            <td style="width:40px"><input type="checkbox" class="junk-checkbox" data-idx="${idx}" value="${f.path}"></td>
+                            <td style="font-weight:600">${f.name}</td>
+                            <td style="font-family:'JetBrains Mono';font-size:0.74rem;max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.path}">${f.path}</td>
+                            <td>${(f.size_bytes / (1024 * 1024)).toFixed(2)}</td>
+                            <td>${(f.categories || []).join(', ') || 'misc'}</td>
+                        </tr>`;
+                    });
+                }
+                showToast('Junk Sweeper', `Scan complete. ${allJunkFiles.length} junk items found.`, 'success');
+            } catch (e) {
+                showToast('Error', 'Failed to scan junk files', 'critical');
+            }
+        }
+
+        function toggleSelectAllJunk() {
+            const checkbox = document.getElementById('junk-select-all');
+            document.querySelectorAll('.junk-checkbox').forEach(cb => cb.checked = checkbox.checked);
+        }
+
+        async function removeSelectedJunk() {
+            const selected = Array.from(document.querySelectorAll('.junk-checkbox:checked')).map(cb => cb.value);
+            if (!selected.length) {
+                showToast('Junk Sweeper', 'No files selected for removal', 'warning');
+                return;
+            }
+
+            if (!confirm(`Remove ${selected.length} junk file(s)? This action cannot be undone.`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/system/storage/junk/remove`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(selected)
+                });
+                const result = await res.json();
+                
+                if (!res.ok) {
+                    throw new Error(result.message || 'Failed to remove junk files');
+                }
+
+                showToast('Junk Sweeper', `Removed ${result.removed} item(s). ${result.failed > 0 ? `${result.failed} failed.` : ''}`, result.failed > 0 ? 'warning' : 'success');
+                if (result.errors && result.errors.length > 0) {
+                    console.log('Removal errors:', result.errors);
+                }
+                await refreshJunk();
+            } catch (e) {
+                showToast('Junk Sweeper', e.message || 'Failed to remove junk files', 'critical');
+            }
+        }
+
+        // ===== SYSTEM ACCESS SETTINGS =====
+        async function loadSystemSettings() {
+            try {
+                const caps = await (await fetch(`${API_BASE}/system/access/capabilities`)).json();
+                const snapshot = await (await fetch(`${API_BASE}/system/settings`)).json();
+
+                const fw = snapshot.settings && snapshot.settings.firewall_enabled;
+                const ra = snapshot.settings && snapshot.settings.remote_access_enabled;
+
+                document.getElementById('sys-firewall-status').innerHTML = fw === null ? '<span style="color:var(--text-muted)">Unknown</span>' : (fw ? '<span style="color:var(--success)">Enabled</span>' : '<span style="color:var(--danger)">Disabled</span>');
+                document.getElementById('sys-remote-status').innerHTML = ra === null ? '<span style="color:var(--text-muted)">Unknown</span>' : (ra ? '<span style="color:var(--success)">Enabled</span>' : '<span style="color:var(--warning)">Disabled</span>');
+                document.getElementById('sys-access-meta').innerText = `Platform: ${caps.platform} | Supported: ${(caps.supported_settings || []).join(', ')}`;
+            } catch (e) {
+                document.getElementById('sys-access-meta').innerText = 'Failed to load system settings';
+                showToast('System Access', 'Unable to fetch system settings snapshot', 'critical');
+            }
+        }
+
+        async function applySystemSetting(setting, value) {
+            try {
+                const res = await fetch(`${API_BASE}/system/settings/apply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ setting, value })
+                });
+                const data = await res.json();
+                if (!res.ok || !data.applied) {
+                    throw new Error(data.detail || data.message || data.stderr || 'Setting update failed');
+                }
+                showToast('System Access', `${setting} updated successfully`, 'success');
+                await loadSystemSettings();
+            } catch (e) {
+                showToast('System Access', e.message || 'Failed to apply system setting', 'critical');
+            }
+        }
+
+        // ===== KERNEL DRIVERS =====
+        let allDrivers = [];
+        async function refreshDrivers() {
+            try {
+                allDrivers = await (await fetch(`${API_BASE}/system/drivers`)).json();
+
+                let kernelCount = 0;
+                allDrivers.forEach(r => { if (r.type.includes('Kernel') || r.start_mode === 'Boot') kernelCount++; });
+
+                document.getElementById('drv-total').innerText = allDrivers.length;
+                document.getElementById('drv-kernel').innerText = kernelCount;
+
+                renderDrivers(allDrivers);
+                showToast('Driver Enumeration', `Extracted ${allDrivers.length} loaded modules`, 'success');
+            } catch (e) { showToast('Error', 'Failed to fetch loaded drivers', 'critical'); }
+        }
+        function renderDrivers(driversList) {
+            const body = document.getElementById('drv-body');
+            body.innerHTML = '';
+            // Only show first 300 to prevent DOM lag, or slice if searched
+            const displayList = driversList.slice(0, 300);
+            displayList.forEach(r => {
+                const color = r.state === 'Running' ? 'var(--success)' : 'var(--text-muted)';
+                const threatStyle = r.risk_score > 0 ? 'background:rgba(239, 68, 68, 0.1)' : '';
+                body.innerHTML += `<tr style="${threatStyle}">
+                    <td style="font-weight:600;font-family:'JetBrains Mono'">${r.name}</td>
+                    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.display_name}">${r.display_name}</td>
+                    <td>${r.type}</td>
+                    <td>${r.start_mode}</td>
+                    <td><strong style="color:${color}">${r.state}</strong></td>
+                </tr>`;
+            });
+            if (driversList.length > 300) {
+                body.innerHTML += `<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Displaying top 300 of ${driversList.length} total modules. Use Search to filter more.</td></tr>`;
+            }
+        }
+        function filterDrivers() {
+            const q = document.getElementById('drv-search').value.toLowerCase();
+            const filtered = allDrivers.filter(r => r.name.toLowerCase().includes(q) || (r.display_name && r.display_name.toLowerCase().includes(q)));
+            renderDrivers(filtered);
+        }
+
+        function filterFirewall() {
+            const q = document.getElementById('fw-search').value.toLowerCase();
+            const filtered = allRules.filter(r => r.name.toLowerCase().includes(q) || (r.program && r.program.toLowerCase().includes(q)));
+            renderFirewall(filtered);
+        }
+
+        // ===== NAVIGATION HOOKS =====
+        const origSwitchView = switchView;
+        switchView = function (viewId) {
+            origSwitchView(viewId);
+            if (viewId === 'processes') refreshProcesses();
+            if (viewId === 'network') refreshNetwork();
+            if (viewId === 'services') refreshServices();
+            if (viewId === 'vulns') runVulnScan();
+            if (viewId === 'hardware') refreshHardware();
+            if (viewId === 'users') refreshUsers();
+            if (viewId === 'firewall') refreshFirewall();
+            if (viewId === 'shares') refreshShares();
+            if (viewId === 'sessions') refreshSessions();
+            if (viewId === 'defender') refreshDefender();
+            if (viewId === 'drivers') refreshDrivers();
+            if (viewId === 'junk') refreshJunk();
+            if (viewId === 'settings') loadSystemSettings();
+        };
+
+        // ===== INIT =====
+        updateDashboard();
+        updateHealthPanel();
+        updateActivityFeed();
+        loadAIConfig();
+        createParticles();
+        showToast('Arkshield v2.0.0', 'Autonomous defense platform initialized', 'success');
+        setInterval(() => {
+            if (currentView === 'overview' || currentView === 'analytics') updateDashboard();
+            if (currentView === 'overview') {
+                updateActivityFeed();
+                updateHealthPanel();
+            }
+        }, 5000);
+    </script>
+</body>
+
+</html>

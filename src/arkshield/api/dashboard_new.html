@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arkshield | Autonomous Cyber Defense Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* ===== CSS VARIABLES ===== */
+        :root {
+            /* Spacing System */
+            --space-xs: 0.25rem;
+            --space-sm: 0.5rem;
+            --space-md: 1rem;
+            --space-lg: 1.5rem;
+            --space-xl: 2rem;
+            --space-2xl: 3rem;
+            --space-3xl: 4rem;
+            
+            /* Border Radius */
+            --radius-sm: 0.375rem;
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+            --radius-2xl: 1.5rem;
+            --radius-full: 9999px;
+            
+            /* Colors */
+            --bg-primary: #0a0e17;
+            --bg-secondary: #0f1419;
+            --bg-tertiary: #161b22;
+            --bg-elevated: #1c2128;
+            
+            --border-primary: #21262d;
+            --border-secondary: #30363d;
+            --border-tertiary: #484f58;
+            
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-tertiary: #6e7681;
+            
+            --brand-primary: #2563eb;
+            --brand-secondary: #3b82f6;
+            --brand-tertiary: #60a5fa;
+            
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-danger: #ef4444;
+            --accent-info: #06b6d4;
+            --accent-purple: #a78bfa;
+            
+            /* Shadows */
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+            --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.6);
+            --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.7);
+            
+            /* Transitions */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ===== GLOBAL RESET & BASE STYLES ===== */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-weight: 700;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+
+        /* ===== LAYOUT ===== */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-primary);
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            padding: var(--space-xl);
+            gap: var(--space-xl);
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding-bottom: var(--space-lg);
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-tertiary));
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .logo-text {
+            font-size: 1.25rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary), var(--brand-tertiary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+            flex: 1;
+        }
+
+        .nav-section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-tertiary);
+            padding: var(--space-md) var(--space-sm);
+            margin-top: var(--space-md);
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md) var(--space-md);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            transition: all var(--transition-fast);
+            cursor: pointer;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: rgba(37, 99, 235, 0.15);
+            color: var(--brand-tertiary);
+            font-weight: 600;
+        }
+
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 60%;
+            background: var(--brand-primary);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        }
+
+        .nav-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: var(--space-md);
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--radius-lg);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: 0.8125rem;
+            margin-bottom: var(--space-sm);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-success);
+            border-radius: var(--radius-full);
+            animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.2); }
+        }
+
+        .version-text {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main {
+            display: flex;
+            flex-direction: column;
+            padding: var(--space-xl);
+            gap: var(--space-xl);
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: var(--space-xl);
+        }
+
+        .header-title {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+        }
+
+        .header-title h1 {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .header-subtitle {
+            font-size: 0.9375rem;
+            color: var(--text-secondary);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-lg);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all var(--transition-fast);
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--brand-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--brand-secondary);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-secondary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-tertiary);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-full);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            border: 1px solid;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-success);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-danger);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--accent-warning);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: var(--space-lg);
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+            transition: all var(--transition-base);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--brand-primary), var(--brand-tertiary));
+            opacity: 0;
+            transition: opacity var(--transition-base);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-secondary);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .stat-label {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .stat-icon.success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-success);
+        }
+
+        .stat-icon.danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-danger);
+        }
+
+        .stat-icon.info {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--accent-info);
+        }
+
+        .stat-icon.warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--accent-warning);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .stat-change {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: 0.8125rem;
+            font-weight: 600;
+        }
+
+        .stat-change.up {
+            color: var(--accent-success);
+        }
+
+        .stat-change.down {
+            color: var(--accent-danger);
+        }
+
+        /* Content Card */
+        .content-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: var(--radius-xl);
+            padding: var(--space-xl);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-lg);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: var(--space-sm);
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-primary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: var(--bg-tertiary);
+        }
+
+        th {
+            text-align: left;
+            padding: var(--space-md) var(--space-lg);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        td {
+            padding: var(--space-md) var(--space-lg);
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        tbody tr {
+            transition: background var(--transition-fast);
+        }
+
+        tbody tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .severity-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: var(--space-xs) var(--space-sm);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .severity-critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-danger);
+        }
+
+        .severity-high {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-warning);
+        }
+
+        .severity-medium {
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--accent-info);
+        }
+
+        .severity-low {
+            background: rgba(139, 148, 158, 0.15);
+            color: var(--text-secondary);
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            padding: var(--space-xs) var(--space-md);
+            border-radius: var(--radius-sm);
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 1px solid;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .action-btn-kill {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-danger);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .action-btn-kill:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .action-btn-ignore {
+            background: rgba(139, 148, 158, 0.1);
+            color: var(--text-secondary);
+            border-color: rgba(139, 148, 158, 0.3);
+        }
+
+        .action-btn-ignore:hover {
+            background: rgba(139, 148, 158, 0.2);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-secondary);
+            border-radius: var(--radius-sm);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-tertiary);
+        }
+
+        /* Utility Classes */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-md);
+            padding: var(--space-3xl) var(--space-xl);
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            color: var(--text-secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                height: auto;
+                position: relative;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .main {
+                padding: var(--space-md);
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-md);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <div class="logo-icon">🛡️</div>
+                <div class="logo-text">Arkshield</div>
+            </div>
+
+            <nav class="nav">
+                <div class="nav-section-title">OVERVIEW</div>
+                <a href="#" class="nav-item active">
+                    <span class="nav-icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">⚡</span>
+                    <span>Alerts</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">🔍</span>
+                    <span>Threat Hunt</span>
+                </a>
+
+                <div class="nav-section-title">MONITORING</div>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">💻</span>
+                    <span>Processes</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">🌐</span>
+                    <span>Network</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">📁</span>
+                    <span>Filesystem</span>
+                </a>
+
+                <div class="nav-section-title">SECURITY</div>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">🔐</span>
+                    <span>Users</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">🛠️</span>
+                    <span>Services</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">🔥</span>
+                    <span>Firewall</span>
+                </a>
+
+                <div class="nav-section-title">SYSTEM</div>
+                <a href="#" class="nav-item">
+                    <span class="nav-icon">⚙️</span>
+                    <span>Settings</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <div class="status-dot"></div>
+                    <span>System Protected</span>
+                </div>
+                <div class="version-text">
+                    Version 1.0.0 • Platform: <span id="platform">Windows</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-title">
+                    <h1>Security Dashboard</h1>
+                    <div class="header-subtitle">Real-time monitoring and threat detection</div>
+                </div>
+                <div class="header-actions">
+                    <span class="badge badge-success">
+                        <span class="status-dot"></span>
+                        <span>Active</span>
+                    </span>
+                    <button class="btn btn-secondary">⚙️ Settings</button>
+                    <button class="btn btn-primary">🔄 Refresh</button>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-label">Active Threats</div>
+                        <div class="stat-icon danger">⚠️</div>
+                    </div>
+                    <div class="stat-value" id="threat-count">0</div>
+                    <div class="stat-change down">
+                        <span>↓ 12%</span>
+                        <span>from last hour</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-label">Security Score</div>
+                        <div class="stat-icon success">✓</div>
+                    </div>
+                    <div class="stat-value" id="security-score">95</div>
+                    <div class="stat-change up">
+                        <span>↑ 5%</span>
+                        <span>from last hour</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-label">Monitored Processes</div>
+                        <div class="stat-icon info">💻</div>
+                    </div>
+                    <div class="stat-value" id="process-count">--</div>
+                    <div class="stat-change">
+                        <span>Real-time</span>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-label">Network Activity</div>
+                        <div class="stat-icon warning">🌐</div>
+                    </div>
+                    <div class="stat-value" id="connection-count">--</div>
+                    <div class="stat-change">
+                        <span>Active connections</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Alerts -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h2 class="card-title">Recent Alerts</h2>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary">📥 Export</button>
+                        <button class="btn btn-secondary">🔍 Filter</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="alerts-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Severity</th>
+                                <th>Event</th>
+                                <th>Source</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-tbody">
+                            <tr>
+                                <td colspan="5">
+                                    <div class="empty-state">
+                                        <div class="empty-state-icon">🔍</div>
+                                        <div class="empty-state-text">
+                                            No alerts at this time. System is monitoring...
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Suspicious Processes -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h2 class="card-title">Suspicious Processes</h2>
+                    <div class="card-actions">
+                        <button class="btn btn-secondary" onclick="loadProcesses()">🔄 Refresh</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="processes-table">
+                        <thead>
+                            <tr>
+                                <th>PID</th>
+                                <th>Process Name</th>
+                                <th>Risk</th>
+                                <th>CPU</th>
+                                <th>Memory</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="processes-tbody">
+                            <tr>
+                                <td colspan="6">
+                                    <div class="empty-state">
+                                        <div class="empty-state-icon">💻</div>
+                                        <div class="empty-state-text">
+                                            No suspicious processes detected. Click refresh to scan.
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // API Base URL
+        const API_BASE = '';
+
+        // Auto-refresh interval
+        let refreshInterval;
+
+        // Platform detection
+        fetch(`${API_BASE}/system/info`)
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('platform').textContent = data.os || 'Unknown';
+            });
+
+        // Load stats
+        function loadStats() {
+            // Threat count
+            fetch(`${API_BASE}/alerts?limit=100`)
+                .then(r => r.json())
+                .then(data => {
+                    const criticalCount = data.filter(a => a.severity === 'CRITICAL').length;
+                    document.getElementById('threat-count').textContent = criticalCount;
+                });
+
+            // Process count
+            fetch(`${API_BASE}/system/processes`)
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('process-count').textContent = data.length;
+                });
+
+            // Connection count
+            fetch(`${API_BASE}/network/connections`)
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('connection-count').textContent = data.length;
+                });
+
+            // Security score (mock)
+            document.getElementById('security-score').textContent = Math.floor(Math.random() * 10) + 90;
+        }
+
+        // Load alerts
+        function loadAlerts() {
+            fetch(`${API_BASE}/alerts?limit=10`)
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('alerts-tbody');
+                    if (data.length === 0) {
+                        tbody.innerHTML = `
+                            <tr><td colspan="5">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">🔍</div>
+                                    <div class="empty-state-text">No alerts at this time</div>
+                                </div>
+                            </td></tr>
+                        `;
+                        return;
+                    }
+
+                    tbody.innerHTML = data.map(alert => `
+                        <tr>
+                            <td>${new Date(alert.timestamp).toLocaleTimeString()}</td>
+                            <td><span class="severity-badge severity-${alert.severity.toLowerCase()}">${alert.severity}</span></td>
+                            <td>${alert.description}</td>
+                            <td class="font-mono">${alert.source || 'System'}</td>
+                            <td class="text-right">
+                                <button class="action-btn action-btn-ignore">Ignore</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                });
+        }
+
+        // Load processes
+        function loadProcesses() {
+            fetch(`${API_BASE}/system/processes`)
+                .then(r => r.json())
+                .then(data => {
+                    const suspicious = data.filter(p => p.risk_score && p.risk_score > 30);
+                    const tbody = document.getElementById('processes-tbody');
+                    
+                    if (suspicious.length === 0) {
+                        tbody.innerHTML = `
+                            <tr><td colspan="6">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">✅</div>
+                                    <div class="empty-state-text">No suspicious processes detected</div>
+                                </div>
+                            </td></tr>
+                        `;
+                        return;
+                    }
+
+                    tbody.innerHTML = suspicious.slice(0, 10).map(proc => `
+                        <tr>
+                            <td class="font-mono">${proc.pid}</td>
+                            <td>${proc.name}</td>
+                            <td><span class="severity-badge ${proc.risk_score > 70 ? 'severity-critical' : proc.risk_score > 40 ? 'severity-high' : 'severity-medium'}">${proc.risk_score || 0}</span></td>
+                            <td>${proc.cpu_percent?.toFixed(1) || 0}%</td>
+                            <td>${proc.memory_percent?.toFixed(1) || 0}%</td>
+                            <td class="text-right">
+                                <button class="action-btn action-btn-kill" onclick="killProcess(${proc.pid})">Kill</button>
+                                <button class="action-btn action-btn-ignore">Ignore</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                });
+        }
+
+        // Kill process
+        function killProcess(pid) {
+            if (!confirm(`Kill process ${pid}?`)) return;
+            
+            fetch(`${API_BASE}/system/processes/${pid}/kill`, { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    alert(data.success ? 'Process killed' : 'Failed to kill process');
+                    loadProcesses();
+                });
+        }
+
+        // Initialize
+        loadStats();
+        loadAlerts();
+        loadProcesses();
+
+        // Auto-refresh every 5 seconds
+        refreshInterval = setInterval(() => {
+            loadStats();
+            loadAlerts();
+        }, 5000);
+
+        // Cleanup
+        window.addEventListener('beforeunload', () => {
+            clearInterval(refreshInterval);
+        });
+    </script>
+</body>
+</html>

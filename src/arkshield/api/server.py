@@ -11,6 +11,7 @@ import logging
 import platform
 import shutil
 import hashlib
+import re
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
@@ -36,6 +37,9 @@ _malware_model_state: Dict[str, Any] = {
     "classifications_total": 0,
     "last_classification": None,
 }
+_integrity_watchlist: Dict[str, Dict[str, Any]] = {}
+_integrity_alerts: List[Dict[str, Any]] = []
+_PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
 def _safe_limit(value: int, default: int, minimum: int = 1, maximum: int = 500) -> int:
@@ -158,6 +162,12 @@ class MalwareClassifyRequest(BaseModel):
     entropy: float = 0.0
     suspicious_strings: List[str] = []
     observed_behaviors: List[str] = []
+
+
+class IntegrityWatchRequest(BaseModel):
+    file_path: str
+    criticality: str = "medium"
+    notes: str = ""
 
 
 def _matches_attack_pattern(event: SecurityEvent, pattern: str) -> bool:
@@ -1586,208 +1596,6 @@ async def get_junk_storage():
             for item in dir_path.iterdir():
                 try:
 
-
-        # --- Phases 30-140: Expansion Route Registry ---
-
-        _PHASE_EXPANSION_SPECS: List[Dict[str, Any]] = [
-            {"phase": 30, "name": "Global Threat Intelligence", "capabilities": ["reputation lookups", "global threat feeds"], "endpoints": ["GET /threat-intel/global", "GET /threat-intel/domains/{domain}", "GET /threat-intel/malware/{hash}"]},
-            {"phase": 31, "name": "File Integrity Monitoring", "capabilities": ["detect tampered system files", "track file changes"], "endpoints": ["GET /security/integrity", "POST /security/integrity/watch", "GET /security/integrity/alerts"]},
-            {"phase": 32, "name": "USB and Device Monitoring", "capabilities": ["removable device tracking", "USB attack prevention"], "endpoints": ["GET /devices/usb", "GET /devices/history", "POST /devices/block/{device_id}"]},
-            {"phase": 33, "name": "Privilege Escalation Detection", "capabilities": ["detect privilege escalation", "monitor admin activity"], "endpoints": ["GET /security/privilege-events", "GET /security/admin-actions"]},
-            {"phase": 34, "name": "Ransomware Detection Engine", "capabilities": ["detect mass file encryption", "ransomware behavior patterns"], "endpoints": ["GET /ransomware/alerts", "POST /ransomware/simulate"]},
-            {"phase": 35, "name": "Credential Theft Detection", "capabilities": ["detect credential dumping", "login anomaly detection"], "endpoints": ["GET /security/credential-theft", "GET /security/auth-anomalies"]},
-            {"phase": 36, "name": "DNS Security Monitoring", "capabilities": ["detect malicious domains", "block C2 servers"], "endpoints": ["GET /dns/logs", "GET /dns/suspicious", "POST /dns/block/{domain}"]},
-            {"phase": 37, "name": "Network Traffic Analysis", "capabilities": ["traffic monitoring", "abnormal flow detection"], "endpoints": ["GET /network/traffic", "GET /network/anomalies"]},
-            {"phase": 38, "name": "Insider Threat Detection", "capabilities": ["employee behavior analysis", "data access monitoring"], "endpoints": ["GET /insider/activity", "GET /insider/risk-scores"]},
-            {"phase": 39, "name": "Patch Intelligence System", "capabilities": ["patch analysis", "vulnerability tracking"], "endpoints": ["GET /patch/status", "GET /patch/vulnerabilities", "POST /patch/recommendations"]},
-            {"phase": 40, "name": "Supply Chain Attack Detection", "capabilities": ["software dependency scanning", "supply chain attack detection"], "endpoints": ["GET /supply-chain/dependencies", "GET /supply-chain/vulnerabilities"]},
-            {"phase": 41, "name": "Container Security", "capabilities": ["Docker security scanning", "container runtime monitoring"], "endpoints": ["GET /containers", "GET /containers/security", "POST /containers/scan"]},
-            {"phase": 42, "name": "Kubernetes Security", "capabilities": ["cluster security monitoring"], "endpoints": ["GET /kubernetes/cluster", "GET /kubernetes/security"]},
-            {"phase": 43, "name": "Cloud Security Posture", "capabilities": ["detect insecure cloud settings"], "endpoints": ["GET /cloud/posture", "GET /cloud/misconfigurations"]},
-            {"phase": 44, "name": "Compliance Monitoring", "frameworks": ["ISO 27001", "SOC2", "NIST"], "endpoints": ["GET /compliance/status", "GET /compliance/report"]},
-            {"phase": 45, "name": "Risk Scoring Engine", "capabilities": ["security risk scoring"], "endpoints": ["GET /risk/score", "GET /risk/critical-assets"]},
-            {"phase": 46, "name": "Security Policy Engine", "capabilities": ["enforce security policies"], "endpoints": ["GET /policy", "POST /policy/apply", "GET /policy/violations"]},
-            {"phase": 47, "name": "Automated Playbooks", "capabilities": ["automated incident workflows"], "endpoints": ["GET /playbooks", "POST /playbooks/run"]},
-            {"phase": 48, "name": "Digital Twin Security Model", "capabilities": ["simulate attack scenarios"], "endpoints": ["GET /system/digital-twin", "POST /system/simulate-attack"]},
-            {"phase": 49, "name": "Autonomous Defense System", "capabilities": ["AI-driven defense decisions"], "endpoints": ["GET /autonomous/status", "POST /autonomous/enable"]},
-            {"phase": 50, "name": "Global Security Graph", "capabilities": ["visualize process-file-IP-threat relationships"], "endpoints": ["GET /security/graph", "GET /security/graph/threats"]},
-            {"phase": 51, "name": "Behavioral Baseline Engine", "endpoints": ["GET /behavior/baseline", "POST /behavior/baseline/train", "GET /behavior/anomalies"]},
-            {"phase": 52, "name": "Suspicious Command Detection", "endpoints": ["GET /commands/history", "GET /commands/suspicious", "POST /commands/block/{command}"]},
-            {"phase": 53, "name": "Lateral Movement Detection", "endpoints": ["GET /network/lateral-movement", "GET /network/lateral-alerts"]},
-            {"phase": 54, "name": "MITRE ATTACK Mapping", "endpoints": ["GET /threat/mitre", "GET /threat/mitre/{technique}", "GET /threat/mitre/mapping"]},
-            {"phase": 55, "name": "File Reputation Engine", "endpoints": ["GET /file/reputation/{hash}", "POST /file/reputation/analyze"]},
-            {"phase": 56, "name": "Suspicious Script Detection", "endpoints": ["GET /scripts/detected", "GET /scripts/suspicious", "POST /scripts/block/{id}"]},
-            {"phase": 57, "name": "Living-Off-The-Land Detection", "endpoints": ["GET /security/lolbins", "GET /security/lolbins/events"]},
-            {"phase": 58, "name": "System Persistence Detection", "endpoints": ["GET /security/persistence", "GET /security/persistence/events"]},
-            {"phase": 59, "name": "Scheduled Task Monitoring", "endpoints": ["GET /tasks/scheduled", "GET /tasks/suspicious"]},
-            {"phase": 60, "name": "Registry Monitoring", "endpoints": ["GET /registry/changes", "GET /registry/suspicious"]},
-            {"phase": 61, "name": "Privileged Process Monitoring", "endpoints": ["GET /processes/privileged", "GET /processes/privileged/events"]},
-            {"phase": 62, "name": "API Abuse Detection", "endpoints": ["GET /api/abuse", "GET /api/anomalies"]},
-            {"phase": 63, "name": "Authentication Monitoring", "endpoints": ["GET /auth/logins", "GET /auth/anomalies"]},
-            {"phase": 64, "name": "Brute Force Detection", "endpoints": ["GET /auth/bruteforce", "POST /auth/block/{ip}"]},
-            {"phase": 65, "name": "Session Monitoring", "endpoints": ["GET /sessions", "GET /sessions/suspicious"]},
-            {"phase": 66, "name": "Email Threat Intelligence", "endpoints": ["GET /email/phishing", "GET /email/malware"]},
-            {"phase": 67, "name": "Browser Security Monitoring", "endpoints": ["GET /browser/extensions", "GET /browser/suspicious"]},
-            {"phase": 68, "name": "Data Exfiltration Detection", "endpoints": ["GET /security/data-exfiltration", "GET /security/data-exfiltration/events"]},
-            {"phase": 69, "name": "File Upload Monitoring", "endpoints": ["GET /uploads/log", "GET /uploads/suspicious"]},
-            {"phase": 70, "name": "Data Loss Prevention", "endpoints": ["GET /dlp/events", "POST /dlp/block"]},
-            {"phase": 71, "name": "Sensitive Data Discovery", "endpoints": ["GET /data/sensitive", "GET /data/classification"]},
-            {"phase": 72, "name": "Credential Exposure Scanner", "endpoints": ["GET /credentials/exposed", "POST /credentials/scan"]},
-            {"phase": 73, "name": "Password Strength Analyzer", "endpoints": ["GET /security/password-strength"]},
-            {"phase": 74, "name": "Keylogger Detection", "endpoints": ["GET /security/keyloggers"]},
-            {"phase": 75, "name": "Screen Capture Monitoring", "endpoints": ["GET /security/screen-capture"]},
-            {"phase": 76, "name": "Webcam Access Monitoring", "endpoints": ["GET /security/webcam"]},
-            {"phase": 77, "name": "Microphone Access Monitoring", "endpoints": ["GET /security/microphone"]},
-            {"phase": 78, "name": "Clipboard Monitoring", "endpoints": ["GET /security/clipboard"]},
-            {"phase": 79, "name": "GPU Abuse Detection", "endpoints": ["GET /system/gpu", "GET /system/gpu/anomalies"]},
-            {"phase": 80, "name": "Crypto Mining Detection", "endpoints": ["GET /security/crypto-mining"]},
-            {"phase": 81, "name": "Botnet Detection", "endpoints": ["GET /network/botnet"]},
-            {"phase": 82, "name": "Command and Control Detection", "endpoints": ["GET /network/c2"]},
-            {"phase": 83, "name": "Suspicious Domain Detection", "endpoints": ["GET /dns/malicious-domains"]},
-            {"phase": 84, "name": "IP Reputation Engine", "endpoints": ["GET /network/ip-reputation/{ip}"]},
-            {"phase": 85, "name": "GeoIP Threat Detection", "endpoints": ["GET /network/geothreats"]},
-            {"phase": 86, "name": "TOR Network Detection", "endpoints": ["GET /network/tor-usage"]},
-            {"phase": 87, "name": "Proxy Abuse Detection", "endpoints": ["GET /network/proxy"]},
-            {"phase": 88, "name": "VPN Anomaly Detection", "endpoints": ["GET /network/vpn"]},
-            {"phase": 89, "name": "System Update Monitoring", "endpoints": ["GET /system/updates"]},
-            {"phase": 90, "name": "Package Integrity Verification", "endpoints": ["GET /system/packages/integrity"]},
-            {"phase": 91, "name": "Kernel Exploit Detection", "endpoints": ["GET /security/kernel-exploits"]},
-            {"phase": 92, "name": "Memory Injection Detection", "endpoints": ["GET /security/memory-injection"]},
-            {"phase": 93, "name": "Process Hollowing Detection", "endpoints": ["GET /security/process-hollowing"]},
-            {"phase": 94, "name": "DLL Hijacking Detection", "endpoints": ["GET /security/dll-hijacking"]},
-            {"phase": 95, "name": "Rootkit Deep Scan", "endpoints": ["GET /security/rootkits"]},
-            {"phase": 96, "name": "Firmware Integrity Scanner", "endpoints": ["GET /system/firmware"]},
-            {"phase": 97, "name": "BIOS Security Check", "endpoints": ["GET /system/bios"]},
-            {"phase": 98, "name": "Hardware Tampering Detection", "endpoints": ["GET /system/hardware-integrity"]},
-            {"phase": 99, "name": "AI Security Advisor", "endpoints": ["POST /ai/security-advice", "GET /ai/security-insights"]},
-            {"phase": 100, "name": "Autonomous Defense Coordinator", "endpoints": ["GET /defense/autonomous", "POST /defense/autonomous/enable", "POST /defense/autonomous/disable"]},
-            {"phase": 101, "name": "Threat Deception System", "purpose": "Create honeypot files/services to detect attackers early.", "endpoints": ["POST /deception/deploy", "GET /deception/honeypots", "GET /deception/alerts", "POST /deception/remove/{id}"]},
-            {"phase": 102, "name": "Honeytoken Monitoring", "purpose": "Detect credential theft or data exfiltration when tokens are accessed.", "endpoints": ["POST /deception/honeytoken/create", "GET /deception/honeytoken/events", "DELETE /deception/honeytoken/{id}"]},
-            {"phase": 103, "name": "Dark Web Monitoring", "purpose": "Monitor leaked credentials and organization mentions on dark web sources.", "endpoints": ["GET /intel/darkweb/breaches", "GET /intel/darkweb/mentions", "GET /intel/darkweb/alerts"]},
-            {"phase": 104, "name": "Supply Chain Binary Verification", "purpose": "Verify binaries and packages against trusted supply-chain metadata.", "endpoints": ["POST /supplychain/binary/verify", "GET /supplychain/dependencies", "GET /supplychain/anomalies"]},
-            {"phase": 105, "name": "Software Bill of Materials (SBOM)", "purpose": "Generate and analyze SBOM for software components.", "endpoints": ["GET /sbom/generate", "GET /sbom/dependencies", "GET /sbom/vulnerabilities"]},
-            {"phase": 106, "name": "Patch Automation Engine", "purpose": "Automatically apply critical patches.", "endpoints": ["GET /patch/pending", "POST /patch/apply/{id}", "GET /patch/history"]},
-            {"phase": 107, "name": "Security Posture Benchmarking", "purpose": "Compare system security posture with industry benchmarks.", "endpoints": ["GET /benchmark/cis", "GET /benchmark/nist", "GET /benchmark/recommendations"]},
-            {"phase": 108, "name": "Red Team Simulation Engine", "purpose": "Simulate attacks to test defenses.", "endpoints": ["POST /redteam/simulate", "GET /redteam/results", "GET /redteam/history"]},
-            {"phase": 109, "name": "Blue Team Training Environment", "purpose": "Train analysts with simulated security incidents.", "endpoints": ["POST /training/scenario/start", "GET /training/scenario/status", "GET /training/scenario/results"]},
-            {"phase": 110, "name": "Attack Surface Mapping", "purpose": "Map externally exposed assets.", "endpoints": ["GET /attack-surface/map", "GET /attack-surface/exposed-assets", "GET /attack-surface/risk-score"]},
-            {"phase": 111, "name": "Digital Identity Protection", "purpose": "Monitor identity risks and compromised accounts.", "endpoints": ["GET /identity/risks", "GET /identity/compromised", "POST /identity/lockdown/{user}"]},
-            {"phase": 112, "name": "Shadow IT Discovery", "purpose": "Detect unauthorized SaaS or applications.", "endpoints": ["GET /shadowit/apps", "GET /shadowit/risks"]},
-            {"phase": 113, "name": "Data Access Governance", "purpose": "Control sensitive data access.", "endpoints": ["GET /data/access-policies", "GET /data/access-violations", "POST /data/access/policy"]},
-            {"phase": 114, "name": "Secure Configuration Drift Detection", "purpose": "Detect system configuration drift from secure baselines.", "endpoints": ["GET /config/drift", "GET /config/drift/history"]},
-            {"phase": 115, "name": "AI Model Integrity Monitoring", "purpose": "Protect ML models from tampering.", "endpoints": ["GET /ai/model/integrity", "GET /ai/model/anomalies"]},
-            {"phase": 116, "name": "AI Model Poisoning Detection", "purpose": "Detect poisoned training data.", "endpoints": ["GET /ai/model/poisoning", "POST /ai/model/validate"]},
-            {"phase": 117, "name": "Autonomous Threat Investigation", "purpose": "AI automatically investigates alerts.", "endpoints": ["POST /investigation/start", "GET /investigation/status", "GET /investigation/results"]},
-            {"phase": 118, "name": "Threat Correlation Engine", "purpose": "Correlate multiple alerts into incidents.", "endpoints": ["GET /correlation/events", "GET /correlation/incidents"]},
-            {"phase": 119, "name": "Security Knowledge Graph", "purpose": "Map relationships between systems, threats, and users.", "endpoints": ["GET /graph/entities", "GET /graph/relationships"]},
-            {"phase": 120, "name": "Threat Simulation Sandbox", "purpose": "Simulate network attack paths.", "endpoints": ["POST /sandbox/network-sim", "GET /sandbox/network-results"]},
-            {"phase": 121, "name": "Data Lineage Security Tracking", "purpose": "Track sensitive data flow across systems.", "endpoints": ["GET /data/lineage", "GET /data/lineage/risks"]},
-            {"phase": 122, "name": "Zero Trust Policy Enforcement", "purpose": "Enforce continuous verification.", "endpoints": ["GET /zerotrust/policies", "POST /zerotrust/enforce", "GET /zerotrust/events"]},
-            {"phase": 123, "name": "Risk-Based Access Control", "purpose": "Dynamically adjust access based on risk.", "endpoints": ["GET /rbac/risk-scores", "POST /rbac/adjust"]},
-            {"phase": 124, "name": "Security Chaos Engineering", "purpose": "Test system resilience by injecting faults.", "endpoints": ["POST /chaos/security-test", "GET /chaos/results"]},
-            {"phase": 125, "name": "Quantum Threat Readiness", "purpose": "Assess readiness for post-quantum cryptography.", "endpoints": ["GET /quantum/crypto-audit", "GET /quantum/recommendations"]},
-            {"phase": 126, "name": "Cross-Environment Threat Correlation", "purpose": "Correlate threats across endpoints, cloud, and network.", "endpoints": ["GET /cross-env/incidents", "GET /cross-env/threats"]},
-            {"phase": 127, "name": "Digital Risk Monitoring", "purpose": "Monitor external reputation risks.", "endpoints": ["GET /risk/external", "GET /risk/reputation"]},
-            {"phase": 128, "name": "Insider Threat Risk Scoring", "purpose": "Behavior-based insider risk analysis.", "endpoints": ["GET /insider/score/{user}", "GET /insider/high-risk"]},
-            {"phase": 129, "name": "Threat Campaign Tracking", "purpose": "Track long-term attacker campaigns.", "endpoints": ["GET /campaigns/active", "GET /campaigns/history"]},
-            {"phase": 130, "name": "Automated Security Documentation", "purpose": "Generate system security documentation automatically.", "endpoints": ["GET /docs/security-report", "GET /docs/architecture"]},
-            {"phase": 131, "name": "Secure AI Assistant for SOC", "purpose": "AI assistant for security analysts.", "endpoints": ["POST /soc/assistant/query", "GET /soc/assistant/history"]},
-            {"phase": 132, "name": "Attack Path Prediction", "purpose": "Predict next attacker steps.", "endpoints": ["GET /attack/prediction", "GET /attack/prediction/path"]},
-            {"phase": 133, "name": "Threat Actor Profiling", "purpose": "Track attacker groups.", "endpoints": ["GET /actors/profiles", "GET /actors/activities"]},
-            {"phase": 134, "name": "Cyber Resilience Scoring", "purpose": "Measure ability to withstand attacks.", "endpoints": ["GET /resilience/score", "GET /resilience/improvements"]},
-            {"phase": 135, "name": "Disaster Security Recovery", "purpose": "Security-focused disaster recovery.", "endpoints": ["POST /recovery/initiate", "GET /recovery/status"]},
-            {"phase": 136, "name": "Secure Asset Lifecycle Tracking", "purpose": "Track security across asset lifecycle.", "endpoints": ["GET /assets/lifecycle", "GET /assets/risk"]},
-            {"phase": 137, "name": "Attack Graph Generation", "purpose": "Visualize attack paths.", "endpoints": ["GET /attack-graph", "GET /attack-graph/paths"]},
-            {"phase": 138, "name": "Security Forecasting", "purpose": "Predict emerging security trends.", "endpoints": ["GET /forecast/threats", "GET /forecast/trends"]},
-            {"phase": 139, "name": "Autonomous Security Policy Generator", "purpose": "AI generates security policies.", "endpoints": ["POST /policy/generate", "GET /policy/recommendations"]},
-            {"phase": 140, "name": "Cross-Tenant Threat Sharing", "purpose": "Share threat intelligence across organizations.", "endpoints": ["GET /intel/shared-threats", "POST /intel/share-threat"]},
-        ]
-
-
-        def _phase_expansion_route_factory(config: Dict[str, Any]):
-            async def _handler(request: Request):
-                return {
-                    "status": "implemented-baseline",
-                    "phase": config["phase"],
-                    "phase_name": config["name"],
-                    "purpose": config.get("purpose", ""),
-                    "capabilities": config.get("capabilities", []),
-                    "frameworks": config.get("frameworks", []),
-                    "endpoint": {
-                        "method": config["method"],
-                        "path_template": config["path"],
-                    },
-                    "path_params": dict(request.path_params),
-                    "query_params": dict(request.query_params),
-                    "note": "This is the baseline phase endpoint. Integrate monitor, repository, and response engines for deep runtime behavior.",
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                }
-
-            return _handler
-
-
-        def _register_phase_expansion_routes() -> Dict[str, int]:
-            expanded_routes: List[Dict[str, Any]] = []
-            for spec in _PHASE_EXPANSION_SPECS:
-                for endpoint in spec.get("endpoints", []):
-                    method, path = endpoint.split(" ", 1)
-                    expanded_routes.append({
-                        "phase": spec["phase"],
-                        "name": spec["name"],
-                        "purpose": spec.get("purpose", ""),
-                        "capabilities": spec.get("capabilities", []),
-                        "frameworks": spec.get("frameworks", []),
-                        "method": method.upper(),
-                        "path": path.strip(),
-                    })
-
-            existing_keys = set()
-            for route in app.routes:
-                route_path = getattr(route, "path", None)
-                route_methods = getattr(route, "methods", None)
-                if route_path and route_methods:
-                    for method in route_methods:
-                        existing_keys.add((method.upper(), route_path))
-
-            added = 0
-            skipped = 0
-            for config in expanded_routes:
-                key = (config["method"], config["path"])
-                if key in existing_keys:
-                    skipped += 1
-                    continue
-
-                route_name = (
-                    f"phase_{config['phase']}_{config['method'].lower()}_"
-                    f"{config['path'].strip('/').replace('/', '_').replace('{', '').replace('}', '').replace('-', '_')}"
-                )
-                app.add_api_route(
-                    config["path"],
-                    _phase_expansion_route_factory(config),
-                    methods=[config["method"]],
-                    name=route_name,
-                    tags=[f"Phase {config['phase']}: {config['name']}"]
-                )
-                existing_keys.add(key)
-                added += 1
-
-            logger.info(f"Phase expansion routes registered: added={added}, skipped={skipped}")
-            return {"added": added, "skipped": skipped}
-
-
-        _PHASE_EXPANSION_REGISTRATION = _register_phase_expansion_routes()
-
-
-        @app.get("/phases/expansion/status")
-        async def phase_expansion_status():
-            """Show registration and coverage status for phases 30-140 baseline endpoints."""
-            phase_numbers = [item["phase"] for item in _PHASE_EXPANSION_SPECS]
-            return {
-                "phases_range": {"start": min(phase_numbers), "end": max(phase_numbers)},
-                "phase_count": len(set(phase_numbers)),
-                "route_registration": _PHASE_EXPANSION_REGISTRATION,
-                "note": "Routes are baseline-implemented. Existing concrete endpoints from earlier phases remain untouched.",
-            }
                     if item.is_file():
                         detect_res = detector.detect_file(item)
                         if detect_res.get('is_junk'):
@@ -3455,6 +3263,454 @@ async def ai_malware_model_status():
     return {
         **_malware_model_state,
         "sandbox_reports_available": len(_sandbox_reports),
+    }
+
+
+# --- Phase 30: Global Threat Intelligence (Deep Implementation) ---
+
+@app.get("/threat-intel/global")
+async def threat_intel_global(
+    window_hours: int = 72,
+    limit: int = 1000,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Return global threat view from local telemetry correlation and built-in threat feeds."""
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=_safe_limit(window_hours, default=72, minimum=1, maximum=720))
+    limit = _safe_limit(limit, default=1000, minimum=50, maximum=5000)
+
+    events = sentinel.repository.get_recent_events(limit=limit)
+    recent_events = [evt for evt in events if (_parse_iso_datetime(evt.timestamp) or cutoff) >= cutoff]
+    threat_events = [evt for evt in recent_events if evt.is_threat]
+
+    by_category = Counter((evt.threat_category or "unknown") for evt in threat_events)
+    by_type = Counter(evt.event_type for evt in threat_events)
+    by_class = Counter(evt.event_class for evt in threat_events)
+
+    avg_risk = round(
+        sum(float(evt.risk_score or 0.0) for evt in threat_events) / len(threat_events),
+        2,
+    ) if threat_events else 0.0
+
+    feeds = [
+        {
+            "feed": "arkshield-local-telemetry",
+            "active": True,
+            "last_update": now.isoformat(),
+            "highlights": [
+                "Behavioral anomaly clusters",
+                "Endpoint threat detections",
+                "Response-action telemetry",
+            ],
+        },
+        {
+            "feed": "arkshield-static-ioc-pack",
+            "active": True,
+            "last_update": now.isoformat(),
+            "highlights": [
+                "Known suspicious TTP markers",
+                "Ransomware behavior signatures",
+                "Credential theft indicators",
+            ],
+        },
+    ]
+
+    return {
+        "window": {"from": cutoff.isoformat(), "to": now.isoformat()},
+        "summary": {
+            "events_analyzed": len(recent_events),
+            "threat_events": len(threat_events),
+            "average_risk_score": avg_risk,
+        },
+        "top_categories": [{"category": k, "count": v} for k, v in by_category.most_common(8)],
+        "top_event_types": [{"event_type": k, "count": v} for k, v in by_type.most_common(10)],
+        "top_event_classes": [{"event_class": k, "count": v} for k, v in by_class.most_common(10)],
+        "feeds": feeds,
+    }
+
+
+@app.get("/threat-intel/domains/{domain}")
+async def threat_intel_domain(
+    domain: str,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Lookup domain reputation using heuristic checks and local telemetry mentions."""
+    normalized = (domain or "").strip().lower()
+    if not normalized or "." not in normalized:
+        raise HTTPException(status_code=400, detail="domain must be a valid hostname")
+
+    suspicious_tlds = {"zip", "mov", "xyz", "top", "click", "gq", "tk", "work", "support"}
+    suspicious_keywords = {"login", "secure", "update", "verify", "wallet", "bonus", "free", "crypto"}
+    known_bad = {
+        "malicious-update.xyz",
+        "c2-control.top",
+        "steal-credentials.click",
+    }
+
+    risk = 5
+    reasons: List[str] = []
+    if normalized in known_bad:
+        risk += 75
+        reasons.append("Domain appears in local known-bad intelligence set")
+
+    tld = normalized.rsplit(".", 1)[-1]
+    if tld in suspicious_tlds:
+        risk += 20
+        reasons.append(f"Suspicious top-level domain detected: .{tld}")
+
+    if any(token in normalized for token in suspicious_keywords):
+        risk += 15
+        reasons.append("Domain contains phishing-like keywords")
+
+    labels = normalized.split(".")
+    if any(len(label) > 25 for label in labels):
+        risk += 10
+        reasons.append("Unusually long domain label detected")
+
+    events = sentinel.repository.get_recent_events(limit=2000)
+    mentions = 0
+    for evt in events:
+        blob = " ".join([
+            evt.description or "",
+            evt.raw_data or "",
+            str(evt.metadata or ""),
+            (evt.network.dns_query if evt.network else "") or "",
+        ]).lower()
+        if normalized in blob:
+            mentions += 1
+
+    if mentions > 0:
+        risk += min(30, mentions * 3)
+        reasons.append(f"Domain referenced in telemetry {mentions} time(s)")
+
+    risk = max(0, min(100, risk))
+    reputation = "malicious" if risk >= 75 else "suspicious" if risk >= 45 else "benign"
+
+    return {
+        "domain": normalized,
+        "risk_score": risk,
+        "reputation": reputation,
+        "reasons": reasons or ["No high-risk indicators found"],
+        "telemetry_mentions": mentions,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/threat-intel/malware/{hash}")
+async def threat_intel_malware_hash(
+    hash: str,
+    sentinel: NexusSentinel = Depends(get_sentinel),
+):
+    """Lookup malware intelligence for a file hash using local reports and heuristic reputation."""
+    normalized = (hash or "").strip().lower()
+    if len(normalized) not in {32, 40, 64}:
+        raise HTTPException(status_code=400, detail="hash must be md5/sha1/sha256 length")
+
+    known_bad_hashes = {
+        "44d88612fea8a8f36de82e1278abb02f": "eicar-test-signature",
+        "275a021bbfb6483e54d471899f7db9d2": "generic-trojan-sample",
+    }
+
+    score = 5
+    family = "unknown"
+    evidence: List[str] = []
+    if normalized in known_bad_hashes:
+        score += 80
+        family = known_bad_hashes[normalized]
+        evidence.append("Hash matched known-bad local IOC")
+
+    matching_reports = []
+    for report in _sandbox_reports.values():
+        sha256 = str(report.get("sample", {}).get("sha256", "")).lower()
+        if sha256 == normalized:
+            matching_reports.append(report)
+
+    if matching_reports:
+        top_report = matching_reports[-1]
+        verdict = top_report.get("analysis", {}).get("verdict", "unknown")
+        suspicion = float(top_report.get("analysis", {}).get("suspicion_score", 0.0))
+        score += min(40, int(suspicion * 0.4))
+        evidence.append(f"Matched sandbox report with verdict={verdict}")
+
+    alerts = sentinel.repository.get_recent_alerts(limit=500)
+    alert_mentions = 0
+    for alert in alerts:
+        blob = " ".join([
+            alert.title or "",
+            alert.description or "",
+            str(alert.tags or ""),
+            str(alert.response_actions or ""),
+        ]).lower()
+        if normalized in blob:
+            alert_mentions += 1
+
+    if alert_mentions:
+        score += min(20, alert_mentions * 4)
+        evidence.append(f"Hash referenced by {alert_mentions} alert(s)")
+
+    score = max(0, min(100, score))
+    reputation = "malicious" if score >= 75 else "suspicious" if score >= 45 else "unknown"
+
+    return {
+        "hash": normalized,
+        "hash_type": {32: "md5", 40: "sha1", 64: "sha256"}.get(len(normalized), "unknown"),
+        "risk_score": score,
+        "reputation": reputation,
+        "malware_family": family,
+        "evidence": evidence or ["No strong local intelligence match"],
+        "sandbox_matches": len(matching_reports),
+        "alert_mentions": alert_mentions,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+# --- Phase 31: File Integrity Monitoring (Deep Implementation) ---
+
+@app.post("/security/integrity/watch")
+async def security_integrity_watch(request: IntegrityWatchRequest):
+    """Add or update a watched file with baseline hash for integrity monitoring."""
+    target = os.path.abspath(request.file_path or "")
+    if not target or not os.path.exists(target):
+        raise HTTPException(status_code=404, detail="file not found")
+    if not os.path.isfile(target):
+        raise HTTPException(status_code=400, detail="file_path must point to a file")
+
+    baseline_hash = _sha256_file(target)
+    stat = os.stat(target)
+    now = datetime.now(timezone.utc).isoformat()
+    record = {
+        "file_path": target,
+        "criticality": request.criticality,
+        "notes": request.notes,
+        "baseline_hash": baseline_hash,
+        "last_hash": baseline_hash,
+        "size_bytes": stat.st_size,
+        "mtime": stat.st_mtime,
+        "created_at": now,
+        "updated_at": now,
+        "status": "healthy",
+    }
+    _integrity_watchlist[target] = record
+
+    return {
+        "watch_added": True,
+        "watch": record,
+    }
+
+
+@app.get("/security/integrity")
+async def security_integrity_status():
+    """Check watched files for tampering by comparing current and baseline hashes."""
+    checks = []
+    now = datetime.now(timezone.utc).isoformat()
+
+    for path, watch in list(_integrity_watchlist.items()):
+        entry = {
+            "file_path": path,
+            "criticality": watch.get("criticality", "medium"),
+            "status": "healthy",
+            "baseline_hash": watch.get("baseline_hash", ""),
+            "current_hash": "",
+            "exists": os.path.exists(path),
+            "checked_at": now,
+        }
+
+        if not os.path.exists(path):
+            entry["status"] = "missing"
+            alert = {
+                "id": f"integrity-{int(time.time() * 1000)}",
+                "type": "file_missing",
+                "file_path": path,
+                "criticality": watch.get("criticality", "medium"),
+                "timestamp": now,
+                "message": "Watched file is missing",
+            }
+            _integrity_alerts.append(alert)
+            watch["status"] = "missing"
+            watch["updated_at"] = now
+            checks.append(entry)
+            continue
+
+        try:
+            current_hash = _sha256_file(path)
+            entry["current_hash"] = current_hash
+            watch["last_hash"] = current_hash
+            watch["updated_at"] = now
+
+            if current_hash != watch.get("baseline_hash"):
+                entry["status"] = "tampered"
+                watch["status"] = "tampered"
+                alert = {
+                    "id": f"integrity-{int(time.time() * 1000)}",
+                    "type": "file_tamper_detected",
+                    "file_path": path,
+                    "criticality": watch.get("criticality", "medium"),
+                    "timestamp": now,
+                    "message": "File hash differs from baseline",
+                    "baseline_hash": watch.get("baseline_hash"),
+                    "current_hash": current_hash,
+                }
+                _integrity_alerts.append(alert)
+            else:
+                watch["status"] = "healthy"
+        except Exception as exc:
+            entry["status"] = "error"
+            entry["error"] = str(exc)
+            watch["status"] = "error"
+            watch["updated_at"] = now
+
+        checks.append(entry)
+
+    if len(_integrity_alerts) > 2000:
+        del _integrity_alerts[:-2000]
+
+    counts = Counter(item["status"] for item in checks)
+    return {
+        "watch_count": len(_integrity_watchlist),
+        "summary": {
+            "healthy": counts.get("healthy", 0),
+            "tampered": counts.get("tampered", 0),
+            "missing": counts.get("missing", 0),
+            "error": counts.get("error", 0),
+        },
+        "checks": checks,
+    }
+
+
+@app.get("/security/integrity/alerts")
+async def security_integrity_alerts(limit: int = 100):
+    """Return recent file integrity alerts."""
+    max_items = _safe_limit(limit, default=100, minimum=1, maximum=1000)
+    alerts = list(reversed(_integrity_alerts))[:max_items]
+    return {
+        "count": len(alerts),
+        "alerts": alerts,
+    }
+
+
+# --- Phases 30-140: Expansion Route Registry (Module-Level) ---
+
+def _load_phase_expansion_specs() -> List[Dict[str, Any]]:
+    """Load phase endpoint specs from roadmap markdown for phases 30-140."""
+    this_dir = os.path.dirname(__file__)
+    roadmap_path = os.path.abspath(os.path.join(this_dir, "..", "..", "..", "docs", "PHASES_26_140_ROADMAP.md"))
+    if not os.path.exists(roadmap_path):
+        return []
+
+    specs: List[Dict[str, Any]] = []
+    current: Optional[Dict[str, Any]] = None
+    phase_re = re.compile(r"^###\s+Phase\s+(\d+)\s+-\s+(.+)$", re.IGNORECASE)
+    endpoint_re = re.compile(r"^-\s+`([A-Z]+)\s+([^`]+)`$")
+
+    with open(roadmap_path, "r", encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            phase_match = phase_re.match(line)
+            if phase_match:
+                if current and current.get("phase", 0) >= 30 and current.get("endpoints"):
+                    specs.append(current)
+                current = {
+                    "phase": int(phase_match.group(1)),
+                    "name": phase_match.group(2).strip(),
+                    "endpoints": [],
+                }
+                continue
+
+            if current is None:
+                continue
+
+            endpoint_match = endpoint_re.match(line)
+            if endpoint_match:
+                method = endpoint_match.group(1).upper()
+                path = endpoint_match.group(2).strip()
+                if method in {"GET", "POST", "DELETE"} and path.startswith("/"):
+                    current["endpoints"].append(f"{method} {path}")
+
+    if current and current.get("phase", 0) >= 30 and current.get("endpoints"):
+        specs.append(current)
+
+    return specs
+
+
+def _phase_expansion_route_factory(config: Dict[str, Any]):
+    async def _handler(request: Request):
+        return {
+            "status": "implemented-baseline",
+            "phase": config["phase"],
+            "phase_name": config["name"],
+            "endpoint": {
+                "method": config["method"],
+                "path_template": config["path"],
+            },
+            "path_params": dict(request.path_params),
+            "query_params": dict(request.query_params),
+            "note": "Baseline endpoint. Upgrade with monitor, repository, and response logic for deep behavior.",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+
+    return _handler
+
+
+def _register_phase_expansion_routes() -> Dict[str, int]:
+    specs = _load_phase_expansion_specs()
+    expanded_routes: List[Dict[str, Any]] = []
+    for spec in specs:
+        for endpoint in spec.get("endpoints", []):
+            method, path = endpoint.split(" ", 1)
+            expanded_routes.append({
+                "phase": spec["phase"],
+                "name": spec["name"],
+                "method": method.upper(),
+                "path": path.strip(),
+            })
+
+    existing_keys = set()
+    for route in app.routes:
+        route_path = getattr(route, "path", None)
+        route_methods = getattr(route, "methods", None)
+        if route_path and route_methods:
+            for method in route_methods:
+                existing_keys.add((method.upper(), route_path))
+
+    added = 0
+    skipped = 0
+    for config in expanded_routes:
+        key = (config["method"], config["path"])
+        if key in existing_keys:
+            skipped += 1
+            continue
+
+        route_name = (
+            f"phase_{config['phase']}_{config['method'].lower()}_"
+            f"{config['path'].strip('/').replace('/', '_').replace('{', '').replace('}', '').replace('-', '_')}"
+        )
+        app.add_api_route(
+            config["path"],
+            _phase_expansion_route_factory(config),
+            methods=[config["method"]],
+            name=route_name,
+            tags=[f"Phase {config['phase']}: {config['name']}"]
+        )
+        existing_keys.add(key)
+        added += 1
+
+    logger.info(f"Phase expansion routes registered: added={added}, skipped={skipped}")
+    return {"added": added, "skipped": skipped}
+
+
+_PHASE_EXPANSION_REGISTRATION = _register_phase_expansion_routes()
+
+
+@app.get("/phases/expansion/status")
+async def phase_expansion_status():
+    """Show registration and coverage status for phases 30-140 baseline endpoints."""
+    specs = _load_phase_expansion_specs()
+    phase_numbers = [item["phase"] for item in specs] or [30, 140]
+    return {
+        "phases_range": {"start": min(phase_numbers), "end": max(phase_numbers)},
+        "phase_count": len(set(phase_numbers)),
+        "route_registration": _PHASE_EXPANSION_REGISTRATION,
+        "note": "Routes are baseline-implemented where deep endpoints are not yet present.",
     }
 
 # --- Entry Point ---

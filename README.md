@@ -71,7 +71,9 @@ Dashboard frontend file: `src/arkshield/api/dashboard.html`
 - `GET /forensics/timeline` + related endpoints (Phase 27): Attack timeline reconstruction, process ancestry, and file history.
 - `POST /sandbox/analyze` + related endpoints (Phase 28): Safe, non-executing malware sandbox with behavior-oriented reporting.
 - `POST /ai/malware/classify` + `GET /ai/malware/model-status` (Phase 29): Heuristic malware family classification and model runtime health.
-- Phases 30-140 are now exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
+- `GET /threat-intel/global` + domain/hash lookups (Phase 30): Global threat intelligence with telemetry-driven reputation scoring.
+- `GET /security/integrity` + watch/alerts endpoints (Phase 31): File integrity monitoring with baseline hash tamper detection.
+- Phases 32-140 are exposed as baseline API routes via the expansion registry. Check `GET /phases/expansion/status` for coverage details.
 
 ## Documentation
 

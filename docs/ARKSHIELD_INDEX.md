@@ -55,5 +55,7 @@ A **Continuous Intelligence Layer (CIL)** that wraps around every computing envi
 - Implemented **Phase 27** (`/forensics/*`) for timeline reconstruction, process tree mapping, and file history.
 - Implemented **Phase 28** (`/sandbox/*`) for safe sandbox analysis and behavior reporting.
 - Implemented **Phase 29** (`/ai/malware/*`) for malware family classification and model status tracking.
-- Implemented baseline endpoints for **Phases 30-140** through the API expansion registry, with runtime coverage status at `GET /phases/expansion/status`.
+- Implemented **Phase 30** (`/threat-intel/global`, `/threat-intel/domains/{domain}`, `/threat-intel/malware/{hash}`) with telemetry-driven threat intelligence.
+- Implemented **Phase 31** (`/security/integrity`, `/security/integrity/watch`, `/security/integrity/alerts`) with integrity watchlist and tamper alerts.
+- Implemented baseline endpoints for remaining **Phases 32-140** through the module-level API expansion registry, with runtime coverage at `GET /phases/expansion/status`.
 - Tracked future roadmap through **Phase 140** in `docs/PHASES_26_140_ROADMAP.md`.

@@ -51,19 +51,31 @@ Capabilities:
 - ML-style malware classification (heuristic runtime model)
 - Malware family detection
 
-## Planned Deep Implementations
-
-Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
-
 ### Phase 30 - Global Threat Intelligence
+
+Endpoints:
 - `GET /threat-intel/global`
 - `GET /threat-intel/domains/{domain}`
 - `GET /threat-intel/malware/{hash}`
 
+Capabilities:
+- Reputation lookups
+- Global threat feed summary
+
 ### Phase 31 - File Integrity Monitoring
+
+Endpoints:
 - `GET /security/integrity`
 - `POST /security/integrity/watch`
 - `GET /security/integrity/alerts`
+
+Capabilities:
+- Detect tampered system files
+- Track file changes
+
+## Planned Deep Implementations
+
+Note: Baseline API routes for phases 30-140 are now registered in `src/arkshield/api/server.py`. The sections below represent deeper implementation targets beyond the baseline route coverage.
 
 ### Phase 32 - USB and Device Monitoring
 - `GET /devices/usb`

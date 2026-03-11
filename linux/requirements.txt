@@ -1,0 +1,21 @@
+# ArkShield Linux Desktop Application Requirements
+
+# Desktop application framework
+pywebview>=4.0.0
+
+# Backend framework
+fastapi>=0.111.0
+uvicorn>=0.29.0
+pydantic>=2.0.0
+
+# System monitoring
+psutil>=5.9.0
+
+# Linux-specific GUI backend
+PyGObject>=3.42.0  # For GTK support
+
+# Build tools (for creating AppImage)
+pyinstaller>=6.0.0
+
+# Optional: For better Linux integration
+pillow>=10.0.0  # For icon handling

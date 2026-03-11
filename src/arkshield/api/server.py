@@ -17,6 +17,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Depends, Request, Body
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -140,6 +141,10 @@ _geothreat_events: List[Dict[str, Any]] = []
 _tor_usage_log: List[Dict[str, Any]] = []
 _proxy_activity: List[Dict[str, Any]] = []
 _vpn_anomalies: List[Dict[str, Any]] = []
+# Real-time monitoring caches
+_active_network_connections: List[Dict[str, Any]] = []
+_file_integrity_baseline: Dict[str, str] = {}  # path -> hash
+_file_integrity_changes: List[Dict[str, Any]] = []
 _system_updates: List[Dict[str, Any]] = []
 _package_integrity_checks: List[Dict[str, Any]] = []
 _kernel_exploit_detections: List[Dict[str, Any]] = []
@@ -156,9 +161,6 @@ _deception_honeypots: Dict[str, Dict[str, Any]] = {}
 _deception_alerts: List[Dict[str, Any]] = []
 _honeytokens: Dict[str, Dict[str, Any]] = {}
 _honeytoken_events: List[Dict[str, Any]] = []
-_darkweb_breaches: List[Dict[str, Any]] = []
-_darkweb_mentions: List[Dict[str, Any]] = []
-_darkweb_alerts: List[Dict[str, Any]] = []
 _supply_chain_binaries: List[Dict[str, Any]] = []
 _supply_chain_dependencies: List[Dict[str, Any]] = []
 _supply_chain_anomalies: List[Dict[str, Any]] = []
@@ -439,6 +441,15 @@ def _extract_behavior_signals(file_name: str, ext: str, content_preview: str) ->
 
 @app.get("/")
 async def root():
+    """Serve the Arkshield dashboard interface."""
+    dashboard_path = os.path.join(os.path.dirname(__file__), "dashboard.html")
+    if os.path.exists(dashboard_path):
+        return FileResponse(dashboard_path, media_type="text/html")
+    return {"message": "Arkshield API is ONLINE"}
+
+@app.get("/api")
+async def api_status():
+    """API health check endpoint."""
     return {"message": "Arkshield API is ONLINE"}
 
 
@@ -708,6 +719,53 @@ async def get_alerts(limit: int = 50, status: Optional[str] = None, sentinel: Ne
     if status:
         return sentinel.repository.get_alerts_by_status(status)[:safe_limit]
     return sentinel.repository.get_recent_alerts(limit=safe_limit)
+
+@app.get("/system/info")
+async def get_system_info():
+    """Get basic system information."""
+    import psutil
+    return {
+        "os": f"{platform.system()} {platform.release()}",
+        "hostname": platform.node(),
+        "architecture": platform.machine(),
+        "processor": platform.processor(),
+        "cpu_count": psutil.cpu_count(),
+        "memory_total_gb": round(psutil.virtual_memory().total / (1024**3), 2),
+        "boot_time": psutil.boot_time(),
+    }
+
+@app.get("/system/processes")
+async def get_system_processes():
+    """Alias for /processes endpoint for dashboard compatibility."""
+    import psutil
+    procs = []
+    for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_percent', 'status', 'username', 'create_time']):
+        try:
+            info = p.info
+            # Simple risk heuristic: high CPU + high memory = suspicious
+            risk = 0
+            cpu = info.get('cpu_percent', 0) or 0
+            mem = info.get('memory_percent', 0) or 0
+            if cpu > 50: risk += 30
+            if mem > 10: risk += 20
+            name = info.get('name', '')
+            if name and any(s in name.lower() for s in ['powershell', 'cmd', 'wscript', 'mshta', 'certutil']):
+                risk += 25
+            procs.append({
+                "pid": info['pid'],
+                "name": name,
+                "cpu": round(cpu, 1),
+                "memory": round(mem, 1),
+                "status": info.get('status', 'unknown'),
+                "user": info.get('username', 'SYSTEM'),
+                "risk_score": min(risk, 100),
+                "created": info.get('create_time', 0)
+            })
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            continue
+    # Sort by risk descending, then CPU
+    procs.sort(key=lambda x: (-x['risk_score'], -x['cpu']))
+    return procs[:100]
 
 @app.get("/events")
 async def get_events(limit: int = 100, sentinel: NexusSentinel = Depends(get_sentinel)):
@@ -4687,52 +4745,123 @@ async def network_traffic(sample_seconds: int = 1):
 
 @app.get("/network/anomalies")
 async def network_anomalies(limit: int = 200):
-    """Detect abnormal traffic flow using snapshot baseline deviation and connection spikes."""
+    """Real-time network anomaly detection using psutil for active connection analysis."""
+    try:
+        import psutil
+    except ImportError:
+        return {"error": "psutil not installed", "anomalies": []}
+    
     max_items = _safe_limit(limit, default=200, minimum=1, maximum=1000)
+    timestamp = datetime.now(timezone.utc).isoformat()
+    anomalies: List[Dict[str, Any]] = []
+    
+    # Get real-time network statistics
+    net_io = psutil.net_io_counters()
+    connections = list(psutil.net_connections(kind='inet'))
+    
+    # Take snapshot
+    current_snapshot = {
+        "timestamp": timestamp,
+        "bytes_sent": net_io.bytes_sent,
+        "bytes_recv": net_io.bytes_recv,
+        "packets_sent": net_io.packets_sent,
+        "packets_recv": net_io.packets_recv,
+        "connections_total": len(connections),
+        "connections_established": len([c for c in connections if c.status == 'ESTABLISHED']),
+    }
+    
+    _network_traffic_snapshots.append(current_snapshot)
+    if len(_network_traffic_snapshots) > 1000:
+        _network_traffic_snapshots[:] = _network_traffic_snapshots[-1000:]
+    
     snapshots = _network_traffic_snapshots[-max(20, max_items):]
     if len(snapshots) < 3:
         return {
             "count": 0,
+            "current_snapshot": current_snapshot,
             "anomalies": [],
-            "note": "Not enough traffic samples yet; call /network/traffic a few times first.",
+            "note": "Building baseline - need more samples",
         }
 
-    avg_sent = sum(item["bytes_sent_per_sec"] for item in snapshots[:-1]) / max(1, len(snapshots) - 1)
-    avg_recv = sum(item["bytes_recv_per_sec"] for item in snapshots[:-1]) / max(1, len(snapshots) - 1)
-    avg_conn = sum(item["connections_total"] for item in snapshots[:-1]) / max(1, len(snapshots) - 1)
-
-    anomalies: List[Dict[str, Any]] = []
-    for item in snapshots:
-        reasons = []
-        if avg_sent > 0 and item["bytes_sent_per_sec"] > avg_sent * 3:
-            reasons.append("egress_spike")
-        if avg_recv > 0 and item["bytes_recv_per_sec"] > avg_recv * 3:
-            reasons.append("ingress_spike")
-        if avg_conn > 0 and item["connections_total"] > avg_conn * 2.5:
-            reasons.append("connection_spike")
-        if item["state_counts"].get("syn_sent", 0) > 100:
-            reasons.append("possible_scan_or_flood")
-
-        if not reasons:
-            continue
-
-        severity = "high" if len(reasons) >= 2 else "medium"
-        anomalies.append({
-            "timestamp": item["timestamp"],
-            "reasons": reasons,
-            "severity": severity,
-            "snapshot": item,
-        })
-
-    anomalies = list(reversed(anomalies))[:max_items]
-    return {
-        "count": len(anomalies),
-        "baseline": {
-            "avg_sent_bps": round(avg_sent, 2),
-            "avg_recv_bps": round(avg_recv, 2),
-            "avg_connections": round(avg_conn, 2),
+    # Calculate baseline from historical snapshots
+    avg_conn = sum(s["connections_total"] for s in snapshots[:-1]) / max(1, len(snapshots) - 1)
+    avg_est = sum(s["connections_established"] for s in snapshots[:-1]) / max(1, len(snapshots) - 1)
+    
+    # Analyze current state for anomalies
+    reasons = []
+    
+    # Connection spike detection
+    if avg_conn > 0 and current_snapshot["connections_total"] > avg_conn * 2.5:
+        reasons.append("connection_spike")
+    
+    # Analyze individual connections for suspicious patterns
+    suspicious_conn_count = 0
+    foreign_ips = set()
+    high_port_count = 0
+    
+    for conn in connections:
+        if conn.status == 'ESTABLISHED' and conn.raddr:
+            remote_ip = conn.raddr.ip
+            remote_port = conn.raddr.port
+            
+            # Track foreign IPs
+            if not remote_ip.startswith(("127.", "192.168.", "10.", "172.")):
+                foreign_ips.add(remote_ip)
+            
+            # Suspicious ports
+            if remote_port in [4444, 5555, 6666, 31337, 1337, 8888]:
+                suspicious_conn_count += 1
+            
+            # High ports (potential backdoors)
+            if remote_port > 49152:
+                high_port_count += 1
+    
+    if suspicious_conn_count >= 3:
+        reasons.append("multiple_suspicious_ports")
+    
+    if len(foreign_ips) > 50:
+        reasons.append("excessive_foreign_connections")
+    
+    if high_port_count > 30:
+        reasons.append("high_port_activity")
+    
+    # SYN flood detection
+    syn_sent = len([c for c in connections if c.status == 'SYN_SENT'])
+    if syn_sent > 100:
+        reasons.append("possible_syn_flood")
+    
+    if not reasons:
+        return {
+            "count": 0,
+            "current_snapshot": current_snapshot,
+            "baseline": {"avg_connections": round(avg_conn, 2), "avg_established": round(avg_est, 2)},
+            "anomalies": [],
+            "note": "No anomalies detected",
+        }
+    
+    severity = "high" if len(reasons) >= 2 else "medium"
+    anomaly = {
+        "timestamp": timestamp,
+        "reasons": reasons,
+        "severity": severity,
+        "metrics": {
+            "connections_total": current_snapshot["connections_total"],
+            "connections_established": current_snapshot["connections_established"],
+            "foreign_ips": len(foreign_ips),
+            "suspicious_ports": suspicious_conn_count,
+            "high_ports": high_port_count,
+            "syn_sent": syn_sent,
         },
-        "anomalies": anomalies,
+        "snapshot": current_snapshot,
+    }
+    
+    return {
+        "count": 1 if reasons else 0,
+        "baseline": {
+            "avg_connections": round(avg_conn, 2),
+            "avg_established": round(avg_est, 2),
+        },
+        "anomalies": [anomaly] if reasons else [],
     }
 
 
@@ -7433,35 +7562,97 @@ async def registry_changes(limit: int = 100, rescan: bool = False):
 @app.get("/registry/suspicious")
 async def registry_suspicious(threshold: int = 60):
     """
-    Filter registry changes flagged as suspicious based on risk scoring.
-    Default threshold: 60/100.
+    Real-time registry monitoring for suspicious changes in critical Windows locations.
+    Monitors Run keys, services, and other persistence mechanisms.
     """
-    global _registry_changes
+    if os.name != "nt":
+        return {"error": "Registry monitoring only available on Windows", "changes": []}
     
-    # Ensure changes are populated
-    if not _registry_changes:
-        _registry_changes = _simulate_registry_changes()
+    import winreg
+    suspicious_changes = []
+    timestamp = datetime.now(timezone.utc).isoformat()
     
-    # Filter by threshold
-    suspicious = [
-        change for change in _registry_changes
-        if change.get("risk_score", 0) >= threshold
+    # Critical registry paths to monitor
+    monitored_keys = [
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", "startup_programs"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce", "startup_once"),
+        (winreg.HKEY_CURRENT_USER, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", "user_startup"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SYSTEM\CurrentControlSet\Services", "services"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon", "winlogon"),
+        (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run", "policy_run"),
     ]
     
-    # Sort by risk score descending
-    suspicious.sort(key=lambda c: c.get("risk_score", 0), reverse=True)
+    for hkey, subkey_path, category in monitored_keys:
+        try:
+            with winreg.OpenKey(hkey, subkey_path, 0, winreg.KEY_READ) as key:
+                try:
+                    i = 0
+                    while True:
+                        try:
+                            name, value, value_type = winreg.EnumValue(key, i)
+                            
+                            # Calculate risk score
+                            risk_score = 30  # Base score for being in monitored location
+                            indicators = [f"registry_{category}"]
+                            
+                            value_str = str(value).lower() if value else ""
+                            
+                            # Suspicious patterns
+                            if any(pattern in value_str for pattern in ['powershell', 'cmd.exe', 'wscript', 'cscript']):
+                                risk_score += 25
+                                indicators.append("script_execution")
+                            
+                            if any(pattern in value_str for pattern in ['http://', 'https://', 'ftp://']):
+                                risk_score += 20
+                                indicators.append("network_location")
+                            
+                            if 'temp' in value_str or 'appdata' in value_str:
+                                risk_score += 15
+                                indicators.append("suspicious_path")
+                            
+                            if risk_score >= threshold:
+                                suspicious_changes.append({
+                                    "key_path": f"{subkey_path}",
+                                    "value_name": name,
+                                    "value_data": value_str[:200],  # Truncate long values
+                                    "category": category,
+                                    "risk_score": min(risk_score, 100),
+                                    "indicators": indicators,
+                                    "timestamp": timestamp,
+                                })
+                            
+                            i += 1
+                        except OSError:
+                            break
+                except WindowsError:
+                    pass
+        except FileNotFoundError:
+            continue
+        except PermissionError:
+            suspicious_changes.append({
+                "key_path": subkey_path,
+                "category": category,
+                "risk_score": 50,
+                "indicators": ["access_denied"],
+                "note": "Insufficient permissions to read this key",
+                "timestamp": timestamp,
+            })
     
-    # Indicator aggregation
+    # Sort by risk score
+    suspicious_changes.sort(key=lambda x: x.get("risk_score", 0), reverse=True)
+    
+    # Aggregate indicators
     all_indicators = []
-    for change in suspicious:
+    for change in suspicious_changes:
         all_indicators.extend(change.get("indicators", []))
     indicator_frequency = dict(Counter(all_indicators))
     
     return {
         "threshold": threshold,
-        "suspicious_count": len(suspicious),
+        "suspicious_count": len(suspicious_changes),
         "top_indicators": dict(sorted(indicator_frequency.items(), key=lambda x: x[1], reverse=True)[:10]),
-        "changes": suspicious,
+        "changes": suspicious_changes[:100],  # Limit to top 100
+        "monitored_keys": len(monitored_keys),
     }
 
 
@@ -9571,44 +9762,199 @@ async def deception_honeytoken_delete(id: str):
     return {"status": "deleted", "token": removed}
 
 
-@app.get("/intel/darkweb/breaches")
-async def intel_darkweb_breaches(refresh: bool = False):
-    """Phase 103: Return dark web breach records."""
-    global _darkweb_breaches
-    if refresh or not _darkweb_breaches:
-        _darkweb_breaches = [
-            {"source": "forum-alpha", "records": 12000, "asset": "crm-user-db", "severity": "high"},
-            {"source": "paste-beta", "records": 470, "asset": "vpn-accounts", "severity": "critical"},
+# ========================================
+# REAL-TIME MONITORING - Network Connections
+# ========================================
+
+@app.get("/realtime/network-connections")
+async def realtime_network_connections():
+    """Real-time active network connections with threat scoring."""
+    try:
+        import psutil
+    except ImportError:
+        return {"error": "psutil not installed", "breaches": 0, "items": []}
+    
+    global _active_network_connections
+    connections = []
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        for conn in psutil.net_connections(kind='inet'):
+            if conn.status == psutil.CONN_ESTABLISHED:
+                try:
+                    proc = psutil.Process(conn.pid) if conn.pid else None
+                    proc_name = proc.name() if proc else "unknown"
+                except:
+                    proc_name = "unknown"
+                
+                # Calculate risk score
+                risk = 0
+                indicators = []
+                
+                # Foreign connections to non-local IPs
+                if conn.raddr:
+                    remote_ip = conn.raddr.ip
+                    # Check for suspicious ports
+                    if conn.raddr.port in [4444, 5555, 6666, 31337, 1337]:  # Common C2 ports
+                        risk += 50
+                        indicators.append("suspicious_port")
+                    # Check for non-standard ports
+                    if conn.raddr.port > 10000:
+                        risk += 10
+                        indicators.append("high_port")
+                    
+                    connections.append({
+                        "pid": conn.pid,
+                        "process": proc_name,
+                        "local_addr": f"{conn.laddr.ip}:{conn.laddr.port}" if conn.laddr else "N/A",
+                        "remote_addr": f"{remote_ip}:{conn.raddr.port}",
+                        "status": conn.status,
+                        "risk_score": min(risk, 100),
+                        "indicators": indicators,
+                        "timestamp": timestamp,
+                        "discovered": timestamp
+                    })
+        
+        _active_network_connections = connections[-100:]  # Keep last 100
+        
+        # Filter for suspicious connections
+        suspicious = [c for c in connections if c["risk_score"] >= 40]
+        
+        return {
+            "breaches": len(suspicious),
+            "items": suspicious,
+            "total_connections": len(connections)
+        }
+    except Exception as e:
+        logger.error(f"Network monitoring error: {e}")
+        return {"error": str(e), "breaches": 0, "items": []}
+
+
+@app.get("/realtime/file-integrity")
+async def realtime_file_integrity():
+    """Real-time file integrity monitoring for system files."""
+    global _file_integrity_baseline, _file_integrity_changes
+    
+    # Monitor critical system paths
+    critical_paths = []
+    if os.name == "nt":
+        system_root = os.environ.get("SystemRoot", "C:\\Windows")
+        critical_paths = [
+            os.path.join(system_root, "System32", "drivers", "etc", "hosts"),
+            os.path.join(system_root, "System32", "config", "SAM"),
         ]
-    return {"breaches": len(_darkweb_breaches), "items": _darkweb_breaches}
+    else:
+        critical_paths = ["/etc/passwd", "/etc/shadow", "/etc/hosts", "/etc/sudoers"]
+    
+    new_changes = []
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        for filepath in critical_paths:
+            if not os.path.exists(filepath):
+                continue
+            
+            try:
+                with open(filepath, 'rb') as f:
+                    current_hash = hashlib.sha256(f.read()).hexdigest()
+                
+                # Check baseline
+                if filepath in _file_integrity_baseline:
+                    if _file_integrity_baseline[filepath] != current_hash:
+                        change = {
+                            "id": str(uuid.uuid4().hex[:8]),
+                            "file_path": filepath,
+                            "original_hash": _file_integrity_baseline[filepath],
+                            "new_hash": current_hash,
+                            "detected": timestamp,
+                            "risk_level": 80,
+                            "context": "Critical system file modified",
+                            "term": os.path.basename(filepath)
+                        }
+                        new_changes.append(change)
+                        _file_integrity_changes.append(change)
+                else:
+                    # Establish baseline
+                    _file_integrity_baseline[filepath] = current_hash
+            except (PermissionError, FileNotFoundError):
+                continue
+    except Exception as e:
+        logger.error(f"File integrity monitoring error: {e}")
+    
+    # Keep last 50 changes
+    _file_integrity_changes = _file_integrity_changes[-50:]
+    
+    return {
+        "mentions": len(_file_integrity_changes),
+        "items": _file_integrity_changes,
+        "monitored_files": len(_file_integrity_baseline)
+    }
 
 
-@app.get("/intel/darkweb/mentions")
-async def intel_darkweb_mentions(refresh: bool = False):
-    """Phase 103: Return dark web mentions related to organization assets."""
-    global _darkweb_mentions
-    if refresh or not _darkweb_mentions:
-        _darkweb_mentions = [
-            {"term": "arkshield", "mentions": 4, "sentiment": "threat"},
-            {"term": "company-vpn", "mentions": 2, "sentiment": "sale"},
-        ]
-    return {"mentions": len(_darkweb_mentions), "items": _darkweb_mentions}
-
-
-@app.get("/intel/darkweb/alerts")
-async def intel_darkweb_alerts(refresh: bool = False):
-    """Phase 103: Return prioritized dark web alerts."""
-    global _darkweb_alerts
-    if refresh or not _darkweb_alerts:
-        _darkweb_alerts = [
-            {
-                "alert_id": f"dw-{uuid.uuid4().hex[:8]}",
-                "type": "credential_sale",
-                "priority": "critical",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            }
-        ]
-    return {"alerts": len(_darkweb_alerts), "items": _darkweb_alerts}
+@app.get("/realtime/script-execution")
+async def realtime_script_execution():
+    """Real-time PowerShell and script execution monitoring."""
+    try:
+        import psutil
+    except ImportError:
+        return {"error": "psutil not installed", "alerts": 0, "items": []}
+    
+    alerts = []
+    timestamp = datetime.now(timezone.utc).isoformat()
+    
+    try:
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'username', 'create_time']):
+            try:
+                info = proc.info
+                name = (info.get('name') or '').lower()
+                
+                # Monitor script interpreters
+                if name in ['powershell.exe', 'pwsh.exe', 'cmd.exe', 'python.exe', 'wscript.exe', 'cscript.exe']:
+                    cmdline = ' '.join(info.get('cmdline', []))
+                    
+                    # Calculate risk
+                    risk = 10
+                    reasons = []
+                    
+                    # Encoded commands
+                    if '-enc' in cmdline.lower() or 'frombase64' in cmdline.lower():
+                        risk += 60
+                        reasons.append("encoded_command")
+                    
+                    # Hidden execution
+                    if '-w hidden' in cmdline.lower() or '-windowstyle hidden' in cmdline.lower():
+                        risk += 40
+                        reasons.append("hidden_execution")
+                    
+                    # Download cradles
+                    if 'downloadstring' in cmdline.lower() or 'webclient' in cmdline.lower():
+                        risk += 50
+                        reasons.append("download_cradle")
+                    
+                    # Invoke expression
+                    if 'iex' in cmdline.lower() or 'invoke-expression' in cmdline.lower():
+                        risk += 30
+                        reasons.append("invoke_expression")
+                    
+                    if risk >= 40:
+                        alerts.append({
+                            "alert_id": f"script-{info['pid']}-{uuid.uuid4().hex[:6]}",
+                            "type": "suspicious_script",
+                            "priority": "critical" if risk >= 70 else "high",
+                            "timestamp": timestamp,
+                            "pid": info['pid'],
+                            "process": name,
+                            "user": info.get('username', 'unknown'),
+                            "command": cmdline[:200],  # Truncate long commands
+                            "risk_score": min(risk, 100),
+                            "indicators": reasons
+                        })
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+    except Exception as e:
+        logger.error(f"Script monitoring error: {e}")
+    
+    return {"alerts": len(alerts), "items": alerts}
 
 
 @app.post("/supplychain/binary/verify")
@@ -9895,7 +10241,7 @@ async def identity_compromised(refresh: bool = False):
     global _compromised_identities
     if refresh or not _compromised_identities:
         _compromised_identities = [
-            {"user": "contractor.dev", "source": "darkweb", "status": "active"},
+            {"user": "contractor.dev", "source": "credential_reuse", "status": "active"},
             {"user": "svc-backup", "source": "credential_reuse", "status": "active"},
         ]
     return {"count": len(_compromised_identities), "items": _compromised_identities}
@@ -10746,8 +11092,18 @@ def start_api():
     sentinel_thread = threading.Thread(target=sentinel.start, daemon=True)
     sentinel_thread.start()
     
-    # Run API
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    print("\n" + "="*70)
+    print("  🛡️  ARKSHIELD SECURITY PLATFORM")
+    print("="*70)
+    print(f"  Server running at: http://localhost:8000")
+    print(f"  Dashboard URL:     http://localhost:8000")
+    print(f"  API Docs:          http://localhost:8000/docs")
+    print(f"  Status:            http://localhost:8000/health")
+    print("="*70)
+    print("  Press CTRL+C to stop\n")
+    
+    # Run API on localhost explicitly
+    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
 
 if __name__ == "__main__":
     start_api()

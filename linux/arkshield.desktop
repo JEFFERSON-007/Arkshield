@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=ArkShield Security Monitor
+Comment=Real-time system security monitoring and threat detection
+Exec=/usr/local/bin/arkshield
+Icon=arkshield
+Terminal=false
+Categories=System;Security;Monitor;Network;
+Keywords=security;monitor;threat;network;process;
+StartupNotify=true
+StartupWMClass=ArkShield

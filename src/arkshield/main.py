@@ -28,7 +28,7 @@ logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("arkshield.log")
+        logging.FileHandler(os.path.join(os.getcwd(), "logs", "arkshield.log"))
     ]
 )
 

@@ -62,6 +62,17 @@ cp "$DIST_DIR/$APP_NAME" "$APPDIR/usr/bin/"
 
 # Copy desktop file
 cp arkshield.desktop "$APPDIR/usr/share/applications/"
+cp arkshield.desktop "$APPDIR/"
+
+# Create a placeholder icon for the AppImage
+cat > "$APPDIR/arkshield.svg" << 'EOF'
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="40" fill="#2d3748" />
+  <path d="M50 20 L80 35 L80 65 L50 80 L20 65 L20 35 Z" fill="#4299e1" />
+  <path d="M50 30 L65 40 L65 60 L50 70 L35 60 L35 40 Z" fill="#ebf8ff" />
+</svg>
+EOF
+cp "$APPDIR/arkshield.svg" "$APPDIR/usr/share/icons/hicolor/256x256/apps/arkshield.svg" || true
 
 # Create AppRun script
 cat > "$APPDIR/AppRun" << 'EOF'

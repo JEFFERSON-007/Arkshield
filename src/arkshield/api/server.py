@@ -13,7 +13,7 @@ import platform
 import shutil
 import hashlib
 import re
-from collections import Counter
+from collections import Counter, deque
 from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from fastapi import FastAPI, HTTPException, Depends, Request, Body
@@ -28,8 +28,8 @@ from arkshield.telemetry.events import SecurityEvent, Alert
 # For simplicity in this implementation, we'll use a globally initialized Sentinel instance
 _sentinel: Optional[NexusSentinel] = None
 logger = logging.getLogger("arkshield.api")
-_saved_hunt_queries: List[Dict[str, Any]] = []
-_threat_hunt_history: List[Dict[str, Any]] = []
+_saved_hunt_queries: List[Dict[str, Any]] = deque(maxlen=1000)
+_threat_hunt_history: List[Dict[str, Any]] = deque(maxlen=1000)
 _sandbox_reports: Dict[str, Dict[str, Any]] = {}
 _malware_model_state: Dict[str, Any] = {
     "model_name": "arkshield-heuristic-malware-classifier",
@@ -40,17 +40,17 @@ _malware_model_state: Dict[str, Any] = {
     "last_classification": None,
 }
 _integrity_watchlist: Dict[str, Dict[str, Any]] = {}
-_integrity_alerts: List[Dict[str, Any]] = []
+_integrity_alerts: List[Dict[str, Any]] = deque(maxlen=1000)
 _blocked_devices: Dict[str, Dict[str, Any]] = {}
-_device_history: List[Dict[str, Any]] = []
-_ransomware_simulations: List[Dict[str, Any]] = []
+_device_history: List[Dict[str, Any]] = deque(maxlen=1000)
+_ransomware_simulations: List[Dict[str, Any]] = deque(maxlen=1000)
 _dns_blocked_domains: Dict[str, Dict[str, Any]] = {}
-_network_traffic_snapshots: List[Dict[str, Any]] = []
-_patch_recommendation_history: List[Dict[str, Any]] = []
-_container_scan_history: List[Dict[str, Any]] = []
-_cloud_posture_history: List[Dict[str, Any]] = []
-_compliance_report_history: List[Dict[str, Any]] = []
-_risk_score_history: List[Dict[str, Any]] = []
+_network_traffic_snapshots: List[Dict[str, Any]] = deque(maxlen=1000)
+_patch_recommendation_history: List[Dict[str, Any]] = deque(maxlen=1000)
+_container_scan_history: List[Dict[str, Any]] = deque(maxlen=1000)
+_cloud_posture_history: List[Dict[str, Any]] = deque(maxlen=1000)
+_compliance_report_history: List[Dict[str, Any]] = deque(maxlen=1000)
+_risk_score_history: List[Dict[str, Any]] = deque(maxlen=1000)
 _policy_state: Dict[str, Any] = {
     "mode": "monitor",
     "enforcement": {
@@ -62,10 +62,10 @@ _policy_state: Dict[str, Any] = {
     "version": 1,
     "last_updated": datetime.now(timezone.utc).isoformat(),
 }
-_policy_violation_log: List[Dict[str, Any]] = []
-_playbook_run_history: List[Dict[str, Any]] = []
-_digital_twin_snapshots: List[Dict[str, Any]] = []
-_digital_twin_simulations: List[Dict[str, Any]] = []
+_policy_violation_log: List[Dict[str, Any]] = deque(maxlen=1000)
+_playbook_run_history: List[Dict[str, Any]] = deque(maxlen=1000)
+_digital_twin_snapshots: List[Dict[str, Any]] = deque(maxlen=1000)
+_digital_twin_simulations: List[Dict[str, Any]] = deque(maxlen=1000)
 _autonomous_defense_state: Dict[str, Any] = {
     "enabled": False,
     "mode": "recommendation",
@@ -73,8 +73,8 @@ _autonomous_defense_state: Dict[str, Any] = {
     "policy_binding": "monitor",
     "last_action": None,
 }
-_autonomous_action_log: List[Dict[str, Any]] = []
-_security_graph_snapshots: List[Dict[str, Any]] = []
+_autonomous_action_log: List[Dict[str, Any]] = deque(maxlen=1000)
+_security_graph_snapshots: List[Dict[str, Any]] = deque(maxlen=1000)
 _behavior_baseline_model: Dict[str, Any] = {
     "trained": False,
     "version": 0,
@@ -87,125 +87,125 @@ _behavior_baseline_model: Dict[str, Any] = {
     },
     "sample_count": 0,
 }
-_behavior_observation_history: List[Dict[str, Any]] = []
-_command_observation_history: List[Dict[str, Any]] = []
+_behavior_observation_history: List[Dict[str, Any]] = deque(maxlen=1000)
+_command_observation_history: List[Dict[str, Any]] = deque(maxlen=1000)
 _blocked_commands: Dict[str, Dict[str, Any]] = {}
-_lateral_movement_alerts: List[Dict[str, Any]] = []
-_file_reputation_analysis_history: List[Dict[str, Any]] = []
+_lateral_movement_alerts: List[Dict[str, Any]] = deque(maxlen=1000)
+_file_reputation_analysis_history: List[Dict[str, Any]] = deque(maxlen=1000)
 _blocked_script_rules: Dict[str, Dict[str, Any]] = {}
-_script_detection_events: List[Dict[str, Any]] = []
-_lolbin_events: List[Dict[str, Any]] = []
-_persistence_detections: List[Dict[str, Any]] = []
-_persistence_events: List[Dict[str, Any]] = []
-_scheduled_tasks_cache: List[Dict[str, Any]] = []
-_suspicious_tasks: List[Dict[str, Any]] = []
-_registry_changes: List[Dict[str, Any]] = []
+_script_detection_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_lolbin_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_persistence_detections: List[Dict[str, Any]] = deque(maxlen=1000)
+_persistence_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_scheduled_tasks_cache: List[Dict[str, Any]] = deque(maxlen=1000)
+_suspicious_tasks: List[Dict[str, Any]] = deque(maxlen=1000)
+_registry_changes: List[Dict[str, Any]] = deque(maxlen=1000)
 _registry_baseline: Dict[str, Dict[str, Any]] = {}
-_privileged_process_cache: List[Dict[str, Any]] = []
-_privileged_process_events: List[Dict[str, Any]] = []
-_api_request_log: List[Dict[str, Any]] = []
-_api_abuse_detections: List[Dict[str, Any]] = []
-_auth_login_events: List[Dict[str, Any]] = []
-_auth_anomalies: List[Dict[str, Any]] = []
-_bruteforce_detections: List[Dict[str, Any]] = []
+_privileged_process_cache: List[Dict[str, Any]] = deque(maxlen=1000)
+_privileged_process_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_api_request_log: List[Dict[str, Any]] = deque(maxlen=1000)
+_api_abuse_detections: List[Dict[str, Any]] = deque(maxlen=1000)
+_auth_login_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_auth_anomalies: List[Dict[str, Any]] = deque(maxlen=1000)
+_bruteforce_detections: List[Dict[str, Any]] = deque(maxlen=1000)
 _blocked_ips: Dict[str, Dict[str, Any]] = {}
-_session_cache: List[Dict[str, Any]] = []
-_suspicious_sessions: List[Dict[str, Any]] = []
-_phishing_emails: List[Dict[str, Any]] = []
-_malware_emails: List[Dict[str, Any]] = []
-_browser_extensions: List[Dict[str, Any]] = []
-_suspicious_extensions: List[Dict[str, Any]] = []
+_session_cache: List[Dict[str, Any]] = deque(maxlen=1000)
+_suspicious_sessions: List[Dict[str, Any]] = deque(maxlen=1000)
+_phishing_emails: List[Dict[str, Any]] = deque(maxlen=1000)
+_malware_emails: List[Dict[str, Any]] = deque(maxlen=1000)
+_browser_extensions: List[Dict[str, Any]] = deque(maxlen=1000)
+_suspicious_extensions: List[Dict[str, Any]] = deque(maxlen=1000)
 # Phase 68-140 state variables
-_data_exfiltration_events: List[Dict[str, Any]] = []
-_upload_log: List[Dict[str, Any]] = []
-_suspicious_uploads: List[Dict[str, Any]] = []
-_dlp_events: List[Dict[str, Any]] = []
+_data_exfiltration_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_upload_log: List[Dict[str, Any]] = deque(maxlen=1000)
+_suspicious_uploads: List[Dict[str, Any]] = deque(maxlen=1000)
+_dlp_events: List[Dict[str, Any]] = deque(maxlen=1000)
 _dlp_blocks: Dict[str, Dict[str, Any]] = {}
-_sensitive_data_cache: List[Dict[str, Any]] = []
+_sensitive_data_cache: List[Dict[str, Any]] = deque(maxlen=1000)
 _data_classifications: Dict[str, str] = {}
-_exposed_credentials: List[Dict[str, Any]] = []
-_password_analysis: List[Dict[str, Any]] = []
-_keylogger_detections: List[Dict[str, Any]] = []
-_screen_capture_events: List[Dict[str, Any]] = []
-_webcam_access_log: List[Dict[str, Any]] = []
-_microphone_access_log: List[Dict[str, Any]] = []
-_clipboard_events: List[Dict[str, Any]] = []
-_gpu_usage_history: List[Dict[str, Any]] = []
-_gpu_anomalies: List[Dict[str, Any]] = []
-_cryptomining_detections: List[Dict[str, Any]] = []
-_botnet_indicators: List[Dict[str, Any]] = []
-_c2_communications: List[Dict[str, Any]] = []
-_malicious_domains: List[Dict[str, Any]] = []
+_exposed_credentials: List[Dict[str, Any]] = deque(maxlen=1000)
+_password_analysis: List[Dict[str, Any]] = deque(maxlen=1000)
+_keylogger_detections: List[Dict[str, Any]] = deque(maxlen=1000)
+_screen_capture_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_webcam_access_log: List[Dict[str, Any]] = deque(maxlen=1000)
+_microphone_access_log: List[Dict[str, Any]] = deque(maxlen=1000)
+_clipboard_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_gpu_usage_history: List[Dict[str, Any]] = deque(maxlen=1000)
+_gpu_anomalies: List[Dict[str, Any]] = deque(maxlen=1000)
+_cryptomining_detections: List[Dict[str, Any]] = deque(maxlen=1000)
+_botnet_indicators: List[Dict[str, Any]] = deque(maxlen=1000)
+_c2_communications: List[Dict[str, Any]] = deque(maxlen=1000)
+_malicious_domains: List[Dict[str, Any]] = deque(maxlen=1000)
 _ip_reputation_cache: Dict[str, Dict[str, Any]] = {}
-_geothreat_events: List[Dict[str, Any]] = []
-_tor_usage_log: List[Dict[str, Any]] = []
-_proxy_activity: List[Dict[str, Any]] = []
-_vpn_anomalies: List[Dict[str, Any]] = []
+_geothreat_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_tor_usage_log: List[Dict[str, Any]] = deque(maxlen=1000)
+_proxy_activity: List[Dict[str, Any]] = deque(maxlen=1000)
+_vpn_anomalies: List[Dict[str, Any]] = deque(maxlen=1000)
 # Real-time monitoring caches
-_active_network_connections: List[Dict[str, Any]] = []
+_active_network_connections: List[Dict[str, Any]] = deque(maxlen=1000)
 _file_integrity_baseline: Dict[str, str] = {}  # path -> hash
-_file_integrity_changes: List[Dict[str, Any]] = []
-_system_updates: List[Dict[str, Any]] = []
-_package_integrity_checks: List[Dict[str, Any]] = []
-_kernel_exploit_detections: List[Dict[str, Any]] = []
-_memory_injection_events: List[Dict[str, Any]] = []
-_process_hollowing_detections: List[Dict[str, Any]] = []
-_dll_hijacking_events: List[Dict[str, Any]] = []
-_rootkit_scan_results: List[Dict[str, Any]] = []
+_file_integrity_changes: List[Dict[str, Any]] = deque(maxlen=1000)
+_system_updates: List[Dict[str, Any]] = deque(maxlen=1000)
+_package_integrity_checks: List[Dict[str, Any]] = deque(maxlen=1000)
+_kernel_exploit_detections: List[Dict[str, Any]] = deque(maxlen=1000)
+_memory_injection_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_process_hollowing_detections: List[Dict[str, Any]] = deque(maxlen=1000)
+_dll_hijacking_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_rootkit_scan_results: List[Dict[str, Any]] = deque(maxlen=1000)
 _firmware_integrity_cache: Dict[str, Any] = {}
 _bios_security_status: Dict[str, Any] = {}
-_hardware_tampering_log: List[Dict[str, Any]] = []
-_ai_security_insights: List[Dict[str, Any]] = []
+_hardware_tampering_log: List[Dict[str, Any]] = deque(maxlen=1000)
+_ai_security_insights: List[Dict[str, Any]] = deque(maxlen=1000)
 _autonomous_defense_state: Dict[str, Any] = {"enabled": False, "actions": []}
 _deception_honeypots: Dict[str, Dict[str, Any]] = {}
-_deception_alerts: List[Dict[str, Any]] = []
+_deception_alerts: List[Dict[str, Any]] = deque(maxlen=1000)
 _honeytokens: Dict[str, Dict[str, Any]] = {}
-_honeytoken_events: List[Dict[str, Any]] = []
-_supply_chain_binaries: List[Dict[str, Any]] = []
-_supply_chain_dependencies: List[Dict[str, Any]] = []
-_supply_chain_anomalies: List[Dict[str, Any]] = []
+_honeytoken_events: List[Dict[str, Any]] = deque(maxlen=1000)
+_supply_chain_binaries: List[Dict[str, Any]] = deque(maxlen=1000)
+_supply_chain_dependencies: List[Dict[str, Any]] = deque(maxlen=1000)
+_supply_chain_anomalies: List[Dict[str, Any]] = deque(maxlen=1000)
 _sbom_cache: Dict[str, Any] = {}
-_sbom_vulnerabilities: List[Dict[str, Any]] = []
-_patch_pending: List[Dict[str, Any]] = []
-_patch_history: List[Dict[str, Any]] = []
+_sbom_vulnerabilities: List[Dict[str, Any]] = deque(maxlen=1000)
+_patch_pending: List[Dict[str, Any]] = deque(maxlen=1000)
+_patch_history: List[Dict[str, Any]] = deque(maxlen=1000)
 _benchmark_results: Dict[str, Dict[str, Any]] = {}
-_redteam_simulations: List[Dict[str, Any]] = []
-_redteam_results: List[Dict[str, Any]] = []
+_redteam_simulations: List[Dict[str, Any]] = deque(maxlen=1000)
+_redteam_results: List[Dict[str, Any]] = deque(maxlen=1000)
 _training_scenarios: Dict[str, Dict[str, Any]] = {}
 _attack_surface_map: Dict[str, Any] = {}
-_identity_risks: List[Dict[str, Any]] = []
-_compromised_identities: List[Dict[str, Any]] = []
-_shadowit_apps: List[Dict[str, Any]] = []
-_data_access_policies: List[Dict[str, Any]] = []
-_data_access_violations: List[Dict[str, Any]] = []
-_config_drift_log: List[Dict[str, Any]] = []
-_ai_model_integrity: List[Dict[str, Any]] = []
-_ai_model_poisoning: List[Dict[str, Any]] = []
+_identity_risks: List[Dict[str, Any]] = deque(maxlen=1000)
+_compromised_identities: List[Dict[str, Any]] = deque(maxlen=1000)
+_shadowit_apps: List[Dict[str, Any]] = deque(maxlen=1000)
+_data_access_policies: List[Dict[str, Any]] = deque(maxlen=1000)
+_data_access_violations: List[Dict[str, Any]] = deque(maxlen=1000)
+_config_drift_log: List[Dict[str, Any]] = deque(maxlen=1000)
+_ai_model_integrity: List[Dict[str, Any]] = deque(maxlen=1000)
+_ai_model_poisoning: List[Dict[str, Any]] = deque(maxlen=1000)
 _threat_investigations: Dict[str, Dict[str, Any]] = {}
-_correlation_incidents: List[Dict[str, Any]] = []
+_correlation_incidents: List[Dict[str, Any]] = deque(maxlen=1000)
 _security_knowledge_graph: Dict[str, Any] = {"entities": [], "relationships": []}
 _network_simulations: Dict[str, Dict[str, Any]] = {}
-_data_lineage: List[Dict[str, Any]] = []
-_zerotrust_policies: List[Dict[str, Any]] = []
-_zerotrust_events: List[Dict[str, Any]] = []
+_data_lineage: List[Dict[str, Any]] = deque(maxlen=1000)
+_zerotrust_policies: List[Dict[str, Any]] = deque(maxlen=1000)
+_zerotrust_events: List[Dict[str, Any]] = deque(maxlen=1000)
 _rbac_risk_scores: Dict[str, int] = {}
-_chaos_tests: List[Dict[str, Any]] = []
+_chaos_tests: List[Dict[str, Any]] = deque(maxlen=1000)
 _quantum_audit: Dict[str, Any] = {}
-_cross_env_incidents: List[Dict[str, Any]] = []
-_digital_risk_monitors: List[Dict[str, Any]] = []
+_cross_env_incidents: List[Dict[str, Any]] = deque(maxlen=1000)
+_digital_risk_monitors: List[Dict[str, Any]] = deque(maxlen=1000)
 _insider_risk_scores: Dict[str, int] = {}
-_threat_campaigns: List[Dict[str, Any]] = []
+_threat_campaigns: List[Dict[str, Any]] = deque(maxlen=1000)
 _security_docs: Dict[str, str] = {}
-_soc_assistant_history: List[Dict[str, Any]] = []
-_attack_predictions: List[Dict[str, Any]] = []
-_threat_actor_profiles: List[Dict[str, Any]] = []
+_soc_assistant_history: List[Dict[str, Any]] = deque(maxlen=1000)
+_attack_predictions: List[Dict[str, Any]] = deque(maxlen=1000)
+_threat_actor_profiles: List[Dict[str, Any]] = deque(maxlen=1000)
 _resilience_score: Dict[str, Any] = {}
 _recovery_status: Dict[str, Any] = {}
-_asset_lifecycle: List[Dict[str, Any]] = []
+_asset_lifecycle: List[Dict[str, Any]] = deque(maxlen=1000)
 _attack_graph: Dict[str, Any] = {}
-_security_forecasts: List[Dict[str, Any]] = []
-_policy_recommendations: List[Dict[str, Any]] = []
-_shared_threats: List[Dict[str, Any]] = []
+_security_forecasts: List[Dict[str, Any]] = deque(maxlen=1000)
+_policy_recommendations: List[Dict[str, Any]] = deque(maxlen=1000)
+_shared_threats: List[Dict[str, Any]] = deque(maxlen=1000)
 _PHASE_EXPANSION_REGISTRATION: Dict[str, int] = {"added": 0, "skipped": 0}
 
 
@@ -269,78 +269,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Models ---
+from arkshield.api.routes.threat_intel import router as threat_intel_router
+app.include_router(threat_intel_router)
 
-class AgentStatus(BaseModel):
-    id: str
-    status: str
-    version: str
-    monitors: List[str]
-    uptime_seconds: int
-
-class Stats(BaseModel):
-    events_processed: int
-    alerts_generated: int
-    threats_detected: int
-    security_score: float
-
-
-class SystemSettingUpdate(BaseModel):
-    setting: str
-    value: Any
-
-
-class AutoPrioritizeRequest(BaseModel):
-    window_hours: int = 24
-    alert_limit: int = 200
-    include_resolved: bool = False
-    max_results: int = 100
-
-
-class ThreatHuntQueryRequest(BaseModel):
-    query: str = ""
-    event_class: str = ""
-    event_type: str = ""
-    min_risk_score: float = 0.0
-    max_risk_score: float = 100.0
-    min_anomaly_score: float = 0.0
-    is_threat: Optional[bool] = None
-    tags: List[str] = []
-    attack_pattern: str = ""
-    limit: int = 200
-
-
-class ThreatHuntSaveRequest(BaseModel):
-    name: str
-    description: str = ""
-    query: ThreatHuntQueryRequest
-
-
-class SandboxAnalyzeRequest(BaseModel):
-    file_path: str
-    profile: str = "default"
-
-
-class MalwareClassifyRequest(BaseModel):
-    report_id: str = ""
-    hash_sha256: str = ""
-    file_name: str = ""
-    extension: str = ""
-    entropy: float = 0.0
-    suspicious_strings: List[str] = []
-    observed_behaviors: List[str] = []
-
-
-class IntegrityWatchRequest(BaseModel):
-    file_path: str
-    criticality: str = "medium"
-    notes: str = ""
-
-
-class RansomwareSimulateRequest(BaseModel):
-    target_label: str = "lab-sample"
-    simulated_files: int = 50
-    encryption_rate_per_minute: int = 120
+from arkshield.api.models import (
+    AgentStatus, Stats, SystemSettingUpdate, AutoPrioritizeRequest,
+    ThreatHuntQueryRequest, ThreatHuntSaveRequest, SandboxAnalyzeRequest,
+    MalwareClassifyRequest, IntegrityWatchRequest, RansomwareSimulateRequest
+)
 
 
 def _matches_attack_pattern(event: SecurityEvent, pattern: str) -> bool:
@@ -10936,24 +10872,7 @@ async def policy_recommendations():
     return {"count": len(_policy_recommendations), "items": _policy_recommendations}
 
 
-@app.get("/intel/shared-threats")
-async def intel_shared_threats():
-    """Phase 140: Return cross-tenant shared threat intelligence."""
-    return {"count": len(_shared_threats), "items": _shared_threats}
-
-
-@app.post("/intel/share-threat")
-async def intel_share_threat(payload: Dict[str, Any] = Body(default_factory=dict)):
-    """Phase 140: Share threat indicator with tenants."""
-    threat = {
-        "id": f"st-{uuid.uuid4().hex[:8]}",
-        "indicator": payload.get("indicator", "unknown-ioc"),
-        "type": payload.get("type", "domain"),
-        "severity": payload.get("severity", "high"),
-        "shared_at": datetime.now(timezone.utc).isoformat(),
-    }
-    _shared_threats.append(threat)
-    return {"status": "shared", "threat": threat}
+# Intel routes have been extracted to routes.threat_intel
 
 
 # --- Phases 30-140: Expansion Route Registry (Module-Level) ---

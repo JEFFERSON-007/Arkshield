@@ -178,6 +178,7 @@ class NexusSentinelAgent:
         from arkshield.agent.monitors.memory_scanner import MemoryScanner
         from arkshield.agent.monitors.persistence_detector import PersistenceDetector
         from arkshield.agent.monitors.integrity_checker import IntegrityChecker
+        from arkshield.agent.monitors.registry_monitor import RegistryMonitor
 
         monitor_map = {
             "process": ProcessMonitor,
@@ -186,6 +187,7 @@ class NexusSentinelAgent:
             "memory": MemoryScanner,
             "persistence": PersistenceDetector,
             "integrity": IntegrityChecker,
+            "registry": RegistryMonitor,
         }
 
         for name in self.config.agent.enabled_monitors:

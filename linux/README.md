@@ -2,16 +2,16 @@
 
 Native Linux desktop application for ArkShield security monitoring.
 
-## 🚀 Features
+## Features
 
-- ✅ **Native Linux application** - No browser required
-- ✅ **GTK integration** - Native Linux look and feel
-- ✅ **System tray support** - Runs in background
-- ✅ **AppImage format** - Run on any Linux distro
-- ✅ **Auto-start server** - Backend starts automatically
-- ✅ **Professional look** - Feels like a native Linux app
+- **Native Linux Application:** No browser required.
+- **GTK Integration:** Native Linux look and feel.
+- **System Tray Support:** Runs seamlessly in the background.
+- **AppImage Format:** Portable execution across Linux distributions.
+- **Auto-start Server:** Backend starts automatically upon launch.
+- **Professional Interface:** Designed as a native Linux application.
 
-## 📦 Installation
+## Installation
 
 ### Option 1: System-wide Installation (Recommended)
 
@@ -22,18 +22,18 @@ cd linux
 sudo bash install.sh
 ```
 
-This will:
-1. Install to `/opt/arkshield`
-2. Create launcher at `/usr/local/bin/arkshield`
-3. Add desktop entry for application menu
-4. Install all dependencies
+This script will:
+1. Install the application to `/opt/arkshield`.
+2. Create a launcher at `/usr/local/bin/arkshield`.
+3. Add a desktop entry for the application menu.
+4. Install all required dependencies.
 
-Then run from terminal:
+Run from the terminal:
 ```bash
 arkshield
 ```
 
-Or search "ArkShield" in your application menu.
+Alternatively, search for "ArkShield" in your desktop application menu.
 
 ### Option 2: Run from Source (Development)
 
@@ -74,18 +74,18 @@ cd linux
 bash build_appimage.sh
 ```
 
-This creates:
+This creates the following artifact:
 ```
 linux/dist/ArkShield-1.0.0-x86_64.AppImage
 ```
 
-Run it:
+Run the executable:
 ```bash
 chmod +x dist/ArkShield-1.0.0-x86_64.AppImage
 ./dist/ArkShield-1.0.0-x86_64.AppImage
 ```
 
-## 🎯 Usage
+## Usage
 
 ### Running the Application
 
@@ -105,12 +105,12 @@ python3 arkshield_app.py
 ./ArkShield-1.0.0-x86_64.AppImage
 ```
 
-The application will:
-1. Start FastAPI server automatically on port 8000
-2. Open native GTK window with dashboard
-3. Monitor your system in real-time
+The application will automatically:
+1. Start the FastAPI server on port 8000.
+2. Open a native GTK window presenting the dashboard.
+3. Begin real-time system monitoring.
 
-## 📁 File Structure
+## File Structure
 
 ```
 linux/
@@ -125,11 +125,11 @@ linux/
     └── ArkShield-*.AppImage  # Portable executable
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Port Configuration
 
-If port 8000 is in use, the app automatically finds next available port.
+If port 8000 is already in use, the application will automatically select the next available port.
 
 ### Window Size
 
@@ -137,17 +137,17 @@ Default: 1400x900 pixels
 Minimum: 1024x768 pixels  
 Resizable: Yes
 
-Edit in `arkshield_app.py`:
+To modify the default window size, edit `arkshield_app.py`:
 ```python
 window = webview.create_window(
     title="ArkShield Security Monitor",
-    width=1400,      # Change this
-    height=900,      # Change this
+    width=1400,      # Modify width
+    height=900,      # Modify height
     min_size=(1024, 768)
 )
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Issue: "Module not found" error
 **Solution:**
@@ -156,7 +156,7 @@ pip install -r requirements.txt
 ```
 
 ### Issue: GTK error on startup
-**Solution:** Install GTK development packages:
+**Solution:** Install GTK development packages based on your distribution:
 
 **Ubuntu/Debian:**
 ```bash
@@ -168,50 +168,50 @@ sudo apt-get install gir1.2-gtk-3.0 gir1.2-webkit2-4.0
 sudo dnf install gtk3 webkit2gtk3
 ```
 
-### Issue: AppImage won't run
+### Issue: AppImage fails to execute
 **Solution:**
 ```bash
-# Make executable
+# Make the file executable
 chmod +x ArkShield-*.AppImage
 
-# Install FUSE if needed
+# Install FUSE if required by your distribution
 sudo apt-get install fuse libfuse2  # Ubuntu/Debian
-sudo dnf install fuse              # Fedora
+sudo dnf install fuse               # Fedora
 ```
 
-### Issue: Window doesn't open
-**Solution:** Check if server started:
+### Issue: Application window does not open
+**Solution:** Verify that the server has started successfully:
 ```bash
 netstat -tuln | grep :8000
 ```
 
-### Issue: Permission denied
-**Solution:** Run installer with sudo:
+### Issue: Permission denied during installation
+**Solution:** Run the installer with elevated privileges:
 ```bash
 sudo bash install.sh
 ```
 
-## 📋 Requirements
+## Requirements
 
 ### System Requirements
-- **OS:** Linux (Ubuntu 20.04+, Fedora 35+, Arch, or similar)
+- **Operating System:** Linux (Ubuntu 20.04+, Fedora 35+, Arch Linux, or equivalent)
 - **Architecture:** x86_64 (64-bit)
-- **RAM:** 2 GB minimum
-- **Disk:** 100 MB free space
+- **Memory:** 2 GB RAM minimum
+- **Storage:** 100 MB free space
 
 ### Software Requirements
-- **Python:** 3.8+
-- **GTK:** 3.0+
-- **WebKit2GTK:** 4.0+
+- **Python:** 3.8 or higher
+- **GTK:** 3.0 or higher
+- **WebKit2GTK:** 4.0 or higher
 
-## 🔒 Security Notes
+## Security Considerations
 
-- Server binds to `127.0.0.1` (localhost only)
-- No external network access by default
-- All monitoring uses Linux APIs (psutil, /proc, /sys)
-- No data sent to external servers
+- The server binds strictly to `127.0.0.1` (localhost only).
+- External network access is disabled by default.
+- System monitoring utilizes secure Linux APIs (`psutil`, `/proc`, `/sys`).
+- No telemetry or operational data is transmitted to external servers.
 
-## 🚀 Advanced Usage
+## Advanced Usage
 
 ### Auto-start on Login
 
@@ -228,7 +228,7 @@ cp /usr/share/applications/arkshield.desktop ~/.config/autostart/
 
 ### Run as Systemd Service
 
-Create `/etc/systemd/system/arkshield.service`:
+Create the service file `/etc/systemd/system/arkshield.service`:
 ```ini
 [Unit]
 Description=ArkShield Security Monitor
@@ -244,7 +244,7 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-Enable and start:
+Enable and start the service:
 ```bash
 sudo systemctl enable arkshield
 sudo systemctl start arkshield
@@ -252,7 +252,7 @@ sudo systemctl start arkshield
 
 ### Building for Different Architectures
 
-For ARM64 (e.g., Raspberry Pi):
+For ARM64 architectures (e.g., Raspberry Pi):
 ```bash
 # Install cross-compilation tools
 sudo apt-get install gcc-aarch64-linux-gnu
@@ -261,7 +261,7 @@ sudo apt-get install gcc-aarch64-linux-gnu
 ARCH=aarch64 bash build_appimage.sh
 ```
 
-## 🗑️ Uninstallation
+## Uninstallation
 
 ### From system installation:
 ```bash
@@ -271,42 +271,42 @@ sudo rm /usr/share/applications/arkshield.desktop
 ```
 
 ### From AppImage:
-Just delete the `.AppImage` file.
+Simply delete the `.AppImage` file from your system.
 
-## 📦 Distribution Checklist
+## Distribution Checklist
 
-Before distributing:
+Before releasing a new build, ensure the following checks are complete:
 
-- [ ] Test on Ubuntu, Fedora, and Arch
-- [ ] Verify all features work
-- [ ] Check AppImage size is reasonable
-- [ ] Test without Python pre-installed
-- [ ] Verify GTK theme compatibility
-- [ ] Check system tray icon shows
-- [ ] Test with different desktop environments (GNOME, KDE, XFCE)
+- [ ] Tested on Ubuntu, Fedora, and Arch Linux
+- [ ] Verified functionality of all core features
+- [ ] Confirmed AppImage size is optimal
+- [ ] Tested on systems without Python pre-installed
+- [ ] Verified compatibility with various GTK themes
+- [ ] Confirmed system tray icon visibility and function
+- [ ] Tested across major desktop environments (GNOME, KDE, XFCE)
 
-## 🌐 Supported Distributions
+## Supported Distributions
 
-Tested on:
-- ✅ Ubuntu 20.04, 22.04, 24.04
-- ✅ Fedora 38, 39, 40
-- ✅ Debian 11, 12
-- ✅ Arch Linux (current)
-- ✅ Linux Mint 21
-- ✅ Pop!_OS 22.04
+Officially tested and supported on:
+- Ubuntu 20.04, 22.04, 24.04
+- Fedora 38, 39, 40
+- Debian 11, 12
+- Arch Linux
+- Linux Mint 21
+- Pop!_OS 22.04
 
-Should work on any modern Linux with GTK3+.
+The application is expected to function correctly on any modern Linux distribution with GTK3+ support.
 
-## 📞 Support
+## Support
 
-For issues:
-1. Check system logs: `journalctl -xe`
-2. Verify dependencies: `python3 arkshield_app.py`
-3. Check port availability: `netstat -tuln | grep 8000`
+For issues and debugging:
+1. Review system logs: `journalctl -xe`
+2. Verify dependencies by running manually: `python3 arkshield_app.py`
+3. Check backend port availability: `netstat -tuln | grep 8000`
 
-## 📝 License
+## License
 
-Same as parent ArkShield project.
+Subject to the license terms of the parent ArkShield project.
 
 ---
 

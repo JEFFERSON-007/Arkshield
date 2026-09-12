@@ -85,7 +85,12 @@ class NetworkMonitor(MonitorBase):
         """Collect network telemetry."""
         current_connections = {}
 
-        for conn in psutil.net_connections(kind='all'):
+        _nc_fn = getattr(psutil, 'connections', psutil.net_connections)
+        try:
+            _net_conns = _nc_fn(kind='all')
+        except (psutil.AccessDenied, OSError):
+            _net_conns = []
+        for conn in _net_conns:
             try:
                 if conn.status == 'NONE':
                     continue

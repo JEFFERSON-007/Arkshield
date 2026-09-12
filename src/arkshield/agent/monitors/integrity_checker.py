@@ -339,7 +339,12 @@ class IntegrityChecker(MonitorBase):
     def _check_open_ports(self, deductions: List[float]):
         """Check for suspicious listening ports."""
         suspicious_listening = []
-        for conn in psutil.net_connections(kind='tcp'):
+        _nc_fn = getattr(psutil, 'connections', psutil.net_connections)
+        try:
+            _ic_conns = _nc_fn(kind='tcp')
+        except (psutil.AccessDenied, OSError):
+            _ic_conns = []
+        for conn in _ic_conns:
             if conn.status == 'LISTEN':
                 port = conn.laddr.port
                 if port in {4444, 5555, 6666, 8888, 9999, 31337, 1337}:

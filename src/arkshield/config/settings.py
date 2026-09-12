@@ -173,28 +173,50 @@ class PlatformConfig:
                         setattr(section, key, value)
 
     def _apply_env_overrides(self):
-        """Apply environment variable overrides (NEXUS_ prefix)."""
-        prefix = "NEXUS_"
-        for key, value in os.environ.items():
-            if key.startswith(prefix):
-                parts = key[len(prefix):].lower().split("_", 1)
-                if len(parts) == 2:
-                    section_name, field_name = parts
-                    if hasattr(self, section_name):
-                        section = getattr(self, section_name)
-                        if hasattr(section, field_name):
-                            current = getattr(section, field_name)
-                            try:
-                                if isinstance(current, bool):
-                                    setattr(section, field_name, value.lower() in ("true", "1", "yes"))
-                                elif isinstance(current, int):
-                                    setattr(section, field_name, int(value))
-                                elif isinstance(current, float):
-                                    setattr(section, field_name, float(value))
-                                else:
-                                    setattr(section, field_name, value)
-                            except (ValueError, TypeError):
-                                logger.warning(f"Invalid env override {key}={value}")
+        """Apply environment variable overrides (ARKSHIELD_ and NEXUS_ prefixes)."""
+        # Direct common variable overrides
+        if "ARKSHIELD_DB_PATH" in os.environ:
+            db_path = os.environ["ARKSHIELD_DB_PATH"]
+            self.telemetry.storage_path = str(Path(db_path).parent if db_path.endswith((".db", ".sqlite")) else db_path)
+        if "ARKSHIELD_LOG_LEVEL" in os.environ:
+            self.agent.log_level = os.environ["ARKSHIELD_LOG_LEVEL"].upper()
+        if "ARKSHIELD_API_PORT" in os.environ:
+            try:
+                self.api.port = int(os.environ["ARKSHIELD_API_PORT"])
+            except ValueError:
+                pass
+        if "ARKSHIELD_API_HOST" in os.environ:
+            self.api.host = os.environ["ARKSHIELD_API_HOST"]
+        if "ARKSHIELD_AUTONOMY_LEVEL" in os.environ:
+            try:
+                self.response.autonomy_level = int(os.environ["ARKSHIELD_AUTONOMY_LEVEL"])
+            except ValueError:
+                pass
+        if "ARKSHIELD_JWT_SECRET" in os.environ:
+            self.api.jwt_secret = os.environ["ARKSHIELD_JWT_SECRET"]
+
+        # Section-based prefix overrides (e.g. ARKSHIELD_API_PORT or NEXUS_API_PORT)
+        for prefix in ("ARKSHIELD_", "NEXUS_"):
+            for key, value in os.environ.items():
+                if key.startswith(prefix):
+                    parts = key[len(prefix):].lower().split("_", 1)
+                    if len(parts) == 2:
+                        section_name, field_name = parts
+                        if hasattr(self, section_name):
+                            section = getattr(self, section_name)
+                            if hasattr(section, field_name):
+                                current = getattr(section, field_name)
+                                try:
+                                    if isinstance(current, bool):
+                                        setattr(section, field_name, value.lower() in ("true", "1", "yes"))
+                                    elif isinstance(current, int):
+                                        setattr(section, field_name, int(value))
+                                    elif isinstance(current, float):
+                                        setattr(section, field_name, float(value))
+                                    else:
+                                        setattr(section, field_name, value)
+                                except (ValueError, TypeError):
+                                    logger.warning(f"Invalid env override {key}={value}")
 
     def to_yaml(self, path: str):
         """Save configuration to a YAML file."""

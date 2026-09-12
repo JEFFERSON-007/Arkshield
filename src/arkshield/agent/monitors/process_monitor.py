@@ -213,11 +213,14 @@ class ProcessMonitor(MonitorBase):
         if mem_info:
             proc_info.memory_mb = mem_info.rss / (1024 * 1024)
 
-        # Connection count
+        # Connection count — psutil 6+ uses connections(), older uses net_connections()
         try:
-            conns = proc.net_connections()
+            try:
+                conns = proc.connections()
+            except AttributeError:
+                conns = proc.net_connections()
             proc_info.network_connections = len(conns)
-        except (psutil.AccessDenied, psutil.NoSuchProcess):
+        except (psutil.AccessDenied, psutil.NoSuchProcess, AttributeError):
             pass
 
         # Determine severity and generate events

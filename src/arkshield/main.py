@@ -13,6 +13,7 @@ import logging
 from typing import Optional
 
 from arkshield.config.settings import PlatformConfig
+from arkshield.config import get_db_path, get_log_level, get_platform_config
 from arkshield.agent.core import NexusSentinelAgent
 from arkshield.telemetry.pipeline import TelemetryPipeline
 from arkshield.ai.engine import AISecurityEngine
@@ -22,9 +23,13 @@ from arkshield.response.orchestrator import ResponseOrchestrator
 from arkshield.response.playbook_engine import PlaybookEngine
 from arkshield.security.deception import DeceptionManager
 
-# Configure logging
+# Configure logging dynamically from environment
+log_level_name = get_log_level()
+log_level = getattr(logging, log_level_name, logging.INFO)
+os.makedirs(os.path.join(os.getcwd(), "logs"), exist_ok=True)
+
 logging.basicConfig(
-    level=logging.INFO,
+    level=log_level,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout),
@@ -36,7 +41,7 @@ logger = logging.getLogger("arkshield.main")
 
 class NexusSentinel:
     def __init__(self, config_path: Optional[str] = None):
-        self.config = PlatformConfig.from_yaml(config_path) if config_path else PlatformConfig.default()
+        self.config = get_platform_config(config_path)
         
         # Validate configuration
         validation_issues = self.config.validate()
@@ -47,7 +52,8 @@ class NexusSentinel:
             raise ValueError("Invalid configuration - cannot start platform")
         
         # 1. Initialize Data Platform
-        self.repository = DataRepository(os.path.join(self.config.telemetry.storage_path, "sentinel.db"))
+        db_path = get_db_path(self.config.telemetry.storage_path)
+        self.repository = DataRepository(db_path)
         self.storage_writer = StorageWriter(self.repository)
 
         # 2. Initialize AI Engine

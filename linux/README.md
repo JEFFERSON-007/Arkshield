@@ -254,6 +254,7 @@ sudo systemctl start arkshield
 
 For ARM64 architectures (e.g., Raspberry Pi):
 ```bash
+
 # Install cross-compilation tools
 sudo apt-get install gcc-aarch64-linux-gnu
 

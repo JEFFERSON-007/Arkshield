@@ -15,9 +15,11 @@ build/
 .coverage
 htmlcov/
 .venv/
+.venv*/
 venv/
 ENV/
 .env
+powershell.bat
 .vscode/
 .idea/
 *.swp

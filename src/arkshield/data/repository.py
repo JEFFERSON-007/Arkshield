@@ -109,41 +109,42 @@ class DataRepository:
         except Exception as e:
             logger.error(f"Failed to save alert {alert.alert_id}: {e}")
 
-    def get_recent_events(self, limit: int = 100) -> List[SecurityEvent]:
-        """Retrieve recent events."""
+    def get_recent_events(self, limit: int = 100, skip: int = 0) -> List[SecurityEvent]:
+        """Retrieve recent events with pagination."""
         events = []
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT data FROM events ORDER BY timestamp DESC LIMIT ?', (limit,))
+                cursor.execute('SELECT data FROM events ORDER BY timestamp DESC LIMIT ? OFFSET ?', (limit, skip))
                 for row in cursor.fetchall():
                     events.append(SecurityEvent.from_dict(json.loads(row[0])))
         except Exception as e:
             logger.error(f"Failed to retrieve events: {e}")
         return events
 
-    def get_recent_alerts(self, limit: int = 50) -> List[Alert]:
-        """Retrieve recent alerts."""
+    def get_recent_alerts(self, limit: int = 50, skip: int = 0) -> List[Alert]:
+        """Retrieve recent alerts with pagination."""
         alerts = []
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT data FROM alerts ORDER BY created_at DESC LIMIT ?', (limit,))
+                cursor.execute('SELECT data FROM alerts ORDER BY created_at DESC LIMIT ? OFFSET ?', (limit, skip))
                 for row in cursor.fetchall():
                     alerts.append(Alert.from_dict(json.loads(row[0])))
         except Exception as e:
             logger.error(f"Failed to retrieve alerts: {e}")
         return alerts
 
-    def get_alerts_by_status(self, status: str) -> List[Alert]:
-        """Retrieve alerts by status."""
+    def get_alerts_by_status(self, status: str, limit: int = 50, skip: int = 0) -> List[Alert]:
+        """Retrieve alerts by status with pagination."""
         alerts = []
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('SELECT data FROM alerts WHERE status = ? ORDER BY created_at DESC', (status,))
+                cursor.execute('SELECT data FROM alerts WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?', (status, limit, skip))
                 for row in cursor.fetchall():
                     alerts.append(Alert.from_dict(json.loads(row[0])))
         except Exception as e:
             logger.error(f"Failed to retrieve alerts: {e}")
         return alerts
+

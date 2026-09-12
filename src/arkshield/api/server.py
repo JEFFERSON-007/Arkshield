@@ -5256,10 +5256,7 @@ async def network_anomalies(limit: int = 200):
     }
     
     _network_traffic_snapshots.append(current_snapshot)
-    if len(_network_traffic_snapshots) > 1000:
-        _network_traffic_snapshots[:] = _network_traffic_snapshots[-1000:]
-    
-    snapshots = _network_traffic_snapshots[-max(20, max_items):]
+    snapshots = list(_network_traffic_snapshots)[-max(20, max_items):]
     if len(snapshots) < 3:
         return {
             "count": 0,
@@ -6196,9 +6193,6 @@ async def cloud_posture():
         "findings": active_findings,
     }
     _cloud_posture_history.append(record)
-    if len(_cloud_posture_history) > 500:
-        del _cloud_posture_history[:-500]
-
     return record
 
 

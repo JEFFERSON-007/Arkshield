@@ -80,7 +80,7 @@ SUSPICIOUS_PARENT_CHILD = {
 # Suspicious command-line patterns (cross-platform)
 SUSPICIOUS_CMD_PATTERNS = [
     # Windows PowerShell
-    "-encodedcommand", "-enc ", "-e ", "hidden",
+    "powershell", "-encodedcommand", "-enc ", "-e ", "hidden",
     "bypass", "downloadstring", "downloadfile", "invoke-expression",
     "iex(", "invoke-webrequest", "net.webclient", "start-bitstransfer",
     "reflection.assembly", "frombase64string", "convertto-securestring",

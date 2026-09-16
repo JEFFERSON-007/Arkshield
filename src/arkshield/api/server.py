@@ -303,7 +303,6 @@ _firmware_integrity_cache: Dict[str, Any] = {}
 _bios_security_status: Dict[str, Any] = {}
 _hardware_tampering_log: List[Dict[str, Any]] = deque(maxlen=1000)
 _ai_security_insights: List[Dict[str, Any]] = deque(maxlen=1000)
-_autonomous_defense_state: Dict[str, Any] = {"enabled": False, "actions": []}
 _deception_honeypots: Dict[str, Dict[str, Any]] = {}
 _deception_alerts: List[Dict[str, Any]] = deque(maxlen=1000)
 _honeytokens: Dict[str, Dict[str, Any]] = {}
@@ -1681,6 +1680,9 @@ async def get_local_users():
     
     users.sort(key=lambda x: (-x['risk_score'], x['username']))
     return users
+
+# Backward-compatible alias for test suites and integrations
+get_user_accounts = get_local_users
 
 @app.get("/security/firewall")
 async def get_firewall_rules():
@@ -3594,8 +3596,6 @@ async def threat_hunt_query(
             "query": request.model_dump(),
             "result_count": len(results),
         })
-        if len(_threat_hunt_history) > 200:
-            del _threat_hunt_history[:-200]
 
         return {
             "query": request.model_dump(),
@@ -3627,8 +3627,6 @@ async def threat_hunt_save_query(request: ThreatHuntSaveRequest):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     _saved_hunt_queries.append(record)
-    if len(_saved_hunt_queries) > 500:
-        del _saved_hunt_queries[:-500]
 
     return {"saved": True, "query": record}
 
@@ -4441,8 +4439,6 @@ async def security_integrity_status():
 
         checks.append(entry)
 
-    if len(_integrity_alerts) > 2000:
-        del _integrity_alerts[:-2000]
 
     counts = Counter(item["status"] for item in checks)
     return {
@@ -4558,8 +4554,6 @@ async def devices_usb():
         "device_count": len(devices),
     }
     _device_history.append(event)
-    if len(_device_history) > 1000:
-        del _device_history[:-1000]
 
     return {
         "count": len(devices),
@@ -4887,8 +4881,6 @@ async def ransomware_simulate(request: RansomwareSimulateRequest):
         },
     }
     _ransomware_simulations.append(result)
-    if len(_ransomware_simulations) > 500:
-        del _ransomware_simulations[:-500]
 
     return result
 
@@ -5218,8 +5210,6 @@ async def network_traffic(sample_seconds: int = 1):
         "protocol_counts": proto_counts,
     }
     _network_traffic_snapshots.append(snapshot)
-    if len(_network_traffic_snapshots) > 1000:
-        del _network_traffic_snapshots[:-1000]
 
     return snapshot
 
@@ -5682,8 +5672,6 @@ async def patch_recommendations(
         "recommendations": recommendations,
     }
     _patch_recommendation_history.append(plan)
-    if len(_patch_recommendation_history) > 500:
-        del _patch_recommendation_history[:-500]
 
     return plan
 
@@ -5929,8 +5917,6 @@ async def containers_scan():
         "findings": security.get("findings", []),
     }
     _container_scan_history.append(record)
-    if len(_container_scan_history) > 500:
-        del _container_scan_history[:-500]
 
     return {
         "scan": record,
@@ -6459,8 +6445,6 @@ async def compliance_report():
     }
 
     _compliance_report_history.append(report)
-    if len(_compliance_report_history) > 500:
-        del _compliance_report_history[:-500]
 
     return report
 
@@ -6516,8 +6500,6 @@ async def risk_score():
         "components": components,
     }
     _risk_score_history.append(record)
-    if len(_risk_score_history) > 1000:
-        del _risk_score_history[:-1000]
 
     return record
 
@@ -6618,8 +6600,6 @@ async def policy_apply(payload: Dict[str, Any] = Body(default_factory=dict)):
                     "high_violation_count": violations.get("severity_breakdown", {}).get("high", 0)
                 },
             })
-            if len(_policy_violation_log) > 2000:
-                del _policy_violation_log[:-2000]
 
     return {
         "status": "applied",
@@ -6691,8 +6671,6 @@ async def policy_violations():
         if not _policy_violation_log or _policy_violation_log[-1].get("message") != log_item["message"]:
             _policy_violation_log.append(log_item)
 
-    if len(_policy_violation_log) > 2000:
-        del _policy_violation_log[:-2000]
 
     severity_breakdown = dict(Counter(v["severity"] for v in violations))
     return {
@@ -6704,7 +6682,7 @@ async def policy_violations():
             "low": int(severity_breakdown.get("low", 0)),
         },
         "violations": violations,
-        "recent_log_entries": _policy_violation_log[-20:],
+        "recent_log_entries": list(_policy_violation_log)[-20:],
     }
 
 
@@ -6787,8 +6765,6 @@ async def playbooks_run(payload: Dict[str, Any] = Body(default_factory=dict)):
     }
 
     _playbook_run_history.append(run)
-    if len(_playbook_run_history) > 1000:
-        del _playbook_run_history[:-1000]
 
     return run
 
@@ -6829,8 +6805,6 @@ async def system_digital_twin():
     }
 
     _digital_twin_snapshots.append(twin)
-    if len(_digital_twin_snapshots) > 300:
-        del _digital_twin_snapshots[:-300]
 
     return twin
 
@@ -6881,8 +6855,6 @@ async def system_simulate_attack(payload: Dict[str, Any] = Body(default_factory=
     }
 
     _digital_twin_simulations.append(simulation)
-    if len(_digital_twin_simulations) > 1000:
-        del _digital_twin_simulations[:-1000]
 
     return simulation
 
@@ -6894,8 +6866,8 @@ async def autonomous_status():
     """Report autonomous defense readiness, mode, and most recent response actions."""
     policy = await policy_get()
     risk = await risk_score()
-    recent_playbooks = _playbook_run_history[-5:]
-    recent_actions = _autonomous_action_log[-10:]
+    recent_playbooks = list(_playbook_run_history)[-5:]
+    recent_actions = list(_autonomous_action_log)[-10:]
 
     readiness = "ready"
     blockers = []
@@ -6955,8 +6927,6 @@ async def autonomous_enable(payload: Dict[str, Any] = Body(default_factory=dict)
             action["playbook_outcome"] = pb_result.get("outcome")
 
     _autonomous_action_log.append(action)
-    if len(_autonomous_action_log) > 1000:
-        del _autonomous_action_log[:-1000]
 
     _autonomous_defense_state["last_action"] = action
 
@@ -7059,8 +7029,6 @@ async def security_graph():
     }
 
     _security_graph_snapshots.append(snapshot)
-    if len(_security_graph_snapshots) > 300:
-        del _security_graph_snapshots[:-300]
 
     return snapshot
 
@@ -7099,7 +7067,7 @@ async def security_graph_threats():
 @app.get("/behavior/baseline")
 async def behavior_baseline():
     """Return current behavioral baseline model and latest observations."""
-    latest = _behavior_observation_history[-20:]
+    latest = list(_behavior_observation_history)[-20:]
     return {
         "model": _behavior_baseline_model,
         "recent_observations": latest,
@@ -7144,8 +7112,6 @@ async def behavior_baseline_train(payload: Dict[str, Any] = Body(default_factory
     _behavior_baseline_model["sample_count"] = sample_size
 
     _behavior_observation_history.extend(observations)
-    if len(_behavior_observation_history) > 2000:
-        del _behavior_observation_history[:-2000]
 
     return {
         "status": "trained",
@@ -7240,10 +7206,8 @@ async def commands_history(limit: int = 100):
     observed.sort(key=lambda item: item.get("timestamp", ""), reverse=True)
 
     _command_observation_history.extend(observed[:200])
-    if len(_command_observation_history) > 5000:
-        del _command_observation_history[:-5000]
 
-    merged = (observed + list(reversed(_command_observation_history[-2000:])))[: max(limit * 2, 200)]
+    merged = (observed + list(reversed(list(_command_observation_history)[-2000:])))[: max(limit * 2, 200)]
     deduped: List[Dict[str, Any]] = []
     seen = set()
     for row in merged:
@@ -7394,8 +7358,6 @@ async def network_lateral_movement():
             "finding": finding,
         }
         _lateral_movement_alerts.append(alert)
-        if len(_lateral_movement_alerts) > 2000:
-            del _lateral_movement_alerts[:-2000]
         finding["alert_id"] = alert["alert_id"]
 
     return finding
@@ -7405,7 +7367,7 @@ async def network_lateral_movement():
 async def network_lateral_alerts(limit: int = 100):
     """Return recent lateral movement alerts generated by network and identity correlation logic."""
     limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
-    recent = _lateral_movement_alerts[-limit:]
+    recent = list(_lateral_movement_alerts)[-limit:]
     severity_breakdown = dict(Counter(item.get("severity", "unknown") for item in recent))
 
     return {
@@ -7688,8 +7650,6 @@ async def file_reputation_analyze(payload: Dict[str, Any] = Body(default_factory
     }
 
     _file_reputation_analysis_history.append(record)
-    if len(_file_reputation_analysis_history) > 2000:
-        del _file_reputation_analysis_history[:-2000]
 
     return {
         "analysis": record,
@@ -7750,10 +7710,8 @@ async def scripts_detected(limit: int = 100):
     observations = await _collect_script_execution_observations(limit=max(200, limit * 2))
 
     _script_detection_events.extend(observations)
-    if len(_script_detection_events) > 3000:
-        del _script_detection_events[:-3000]
 
-    merged = list(reversed(_script_detection_events[-max(limit * 3, 200):]))
+    merged = list(reversed(list(_script_detection_events)[-max(limit * 3, 200):]))
     deduped: List[Dict[str, Any]] = []
     seen = set()
     for event in merged:
@@ -7958,8 +7916,6 @@ async def security_lolbins(limit: int = 120):
     events = events[:limit]
 
     _lolbin_events.extend(events)
-    if len(_lolbin_events) > 4000:
-        del _lolbin_events[:-4000]
 
     return {
         "count": len(events),
@@ -7972,7 +7928,7 @@ async def security_lolbins(limit: int = 120):
 async def security_lolbins_events(limit: int = 100):
     """Return retained LOLBin detection events with severity distribution."""
     limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
-    recent = list(reversed(_lolbin_events[-limit:]))
+    recent = list(reversed(list(_lolbin_events)[-limit:]))
     severity_breakdown = dict(Counter(item.get("severity", "unknown") for item in recent))
 
     return {
@@ -8092,7 +8048,7 @@ async def security_persistence(rescan: bool = False):
         
         # Trim event history
         if len(_persistence_events) > 1000:
-            _persistence_events = _persistence_events[-1000:]
+            _persistence_events = list(_persistence_events)[-1000:]
     
     # Risk distribution
     risk_categories = {"low": 0, "medium": 0, "high": 0, "critical": 0}
@@ -8122,7 +8078,7 @@ async def security_persistence(rescan: bool = False):
 async def security_persistence_events(limit: int = 100):
     """Return persistence detection event history with scan statistics."""
     limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
-    recent = list(reversed(_persistence_events[-limit:]))
+    recent = list(reversed(list(_persistence_events)[-limit:]))
     
     total_detections = sum(evt.get("detections_found", 0) for evt in recent)
     avg_detections = total_detections / len(recent) if recent else 0
@@ -8367,10 +8323,10 @@ async def registry_changes(limit: int = 100, rescan: bool = False):
         
         # Trim history
         if len(_registry_changes) > 1000:
-            _registry_changes = _registry_changes[-1000:]
+            _registry_changes = list(_registry_changes)[-1000:]
     
     limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
-    recent = list(reversed(_registry_changes[-limit:]))
+    recent = list(reversed(list(_registry_changes)[-limit:]))
     
     # Operation breakdown
     operation_counts = dict(Counter(c.get("operation", "unknown") for c in recent))
@@ -8665,10 +8621,10 @@ async def processes_privileged_events(limit: int = 100):
         
         # Trim history
         if len(_privileged_process_events) > 1000:
-            _privileged_process_events = _privileged_process_events[-1000:]
+            _privileged_process_events = list(_privileged_process_events)[-1000:]
     
     limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
-    recent = list(reversed(_privileged_process_events[-limit:]))
+    recent = list(reversed(list(_privileged_process_events)[-limit:]))
     
     return {
         "count": len(recent),
@@ -9043,7 +8999,7 @@ async def auth_logins(limit: int = 100, refresh: bool = False):
         _auth_login_events = _simulate_auth_events()
     
     limit = _safe_limit(limit, default=100, minimum=1, maximum=500)
-    recent = list(reversed(_auth_login_events[-limit:]))
+    recent = list(reversed(list(_auth_login_events)[-limit:]))
     
     # Event type distribution
     event_type_counts = dict(Counter(e.get("event_type", "unknown") for e in recent))
@@ -10472,7 +10428,7 @@ async def ai_security_advice(payload: Dict[str, Any] = Body(default_factory=dict
 async def ai_security_insights(limit: int = 20):
     """Phase 99: Return generated AI security insights."""
     bounded = _safe_limit(limit, default=20, minimum=1, maximum=100)
-    return {"count": min(len(_ai_security_insights), bounded), "insights": _ai_security_insights[-bounded:]}
+    return {"count": min(len(_ai_security_insights), bounded), "insights": list(_ai_security_insights)[-bounded:]}
 
 
 @app.get("/defense/autonomous")
@@ -10724,7 +10680,7 @@ async def realtime_file_integrity():
         logger.error(f"File integrity monitoring error: {e}")
     
     # Keep last 50 changes
-    _file_integrity_changes = _file_integrity_changes[-50:]
+    _file_integrity_changes = list(_file_integrity_changes)[-50:]
     
     return {
         "mentions": len(_file_integrity_changes),
@@ -11595,7 +11551,7 @@ async def soc_assistant_query(payload: Dict[str, Any] = Body(default_factory=dic
 async def soc_assistant_history(limit: int = 25):
     """Phase 131: Return SOC assistant query history."""
     bounded = _safe_limit(limit, default=25, minimum=1, maximum=200)
-    return {"count": min(len(_soc_assistant_history), bounded), "items": _soc_assistant_history[-bounded:]}
+    return {"count": min(len(_soc_assistant_history), bounded), "items": list(_soc_assistant_history)[-bounded:]}
 
 
 @app.get("/attack/prediction")

@@ -31,7 +31,7 @@ class AgentConfig:
     log_level: str = "INFO"
     enabled_monitors: List[str] = field(default_factory=lambda: [
         "process", "filesystem", "network", "memory",
-        "persistence", "integrity"
+        "persistence", "integrity", "registry"
     ])
 
 
